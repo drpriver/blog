@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>Templates in C</title>
+<style>
+body {
+  max-width: 44em;
+  margin: auto;
+  margin-bottom: 40em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 12px;
+}
+dt {
+  font-weight: bold;
+}
+pre {
+  padding-left: 2em;
+  padding-right: 1em;
+  padding-top: 1ex;
+  padding-bottom: 1ex;
+  background-color: #fdf6e3;
+  border-radius: 16px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  overflow-x: auto;
+  line-height: 125%;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+tt {
+  background-color: #eee;
+  padding: 2px;
+}
+pre .keyword {
+  color: #049407;
+}
+pre .comment {
+  color: #000;
+  font-style: italic;
+}
+pre .literal {
+  color: #2aa198;
+}
+pre .type {
+  color: #ff8105;
+}
+pre .macro {
+  color: #66a;
+}
+pre .func {
+  color: #213dde;
+}
+pre .preproc {
+  color: #777;
+}
+/*endcss*/
+</style>
+</head>
+<body>
+<nav>
+<ul>
+<li><a href="#generics-in-c">Generics in C</a>
+<ul>
+<li><a href="#void-pointers">Void Pointers</a></li>
+<li><a href="#function-pointers">Function pointers</a></li>
+<li><a href="#inline-macros">Inline Macros</a></li>
+<li><a href="#code-generating-macros">Code Generating Macros</a></li>
+<li><a href="#source-code-generation">Source Code Generation</a></li>
+<li><a href="#copy-paste">Copy Paste</a></li>
+<li><a href="#template-headers-with-multiple-inclusion">Template Headers with Multiple Inclusion</a></li>
+</ul>
+</li>
+<li><a href="#template-headers">Template Headers</a>
+<ul>
+<li><a href="#example-usage">Example Usage</a></li>
+</ul>
+</li>
+<li><a href="#conclusion">Conclusion</a></li>
+<li><a href="#copyright">Copyright</a></li>
+</ul>
+</nav><h1 id="templates-in-c">Templates in C</h1>
+<p>
+<i>David Priver, July 22nd, 2022</i>
+</p>
+<article>
+
+<p>
+Sometimes I see people on the internet sharing their generic libraries in C.
+More often than not, they turn out to use some giant macro that generates a huge
+amount of code on a single source line. I thought I would show a better way of
+doing it if you need to write some C and don't want to copy-paste yet another
+dynamic array or hash table.
+</p>
+<p>
+None of these ideas are new &mdash; I am sure people were doing this in the 80s &mdash;
+but not everyone is aware of them.
+</p>
+<p>
+Note, <tt>_Generic</tt> has nothing to do with this (althought you could use it
+to simulate overloads if you generate a lot of code).
+</p>
+<div>
+<h2 id="generics-in-c">Generics in C</h2>
+<p>
+There are a few ways of creating generic data structures or algorithms in C:
+</p>
+<dt id="void-pointers">Void Pointers</dt>
+<dd>
+<p>
+If the data you are working with can be coerced to a void pointer, you can
+side step the problem by writing a single implementation that only works
+with void pointers or only with raw bytes. When the user actually uses it
+they have to cast back to the original type and to be careful not to get
+confused about which data structure is which.
+</p>
+<p>
+This is easy to implement, but is error-prone and type-unsafe to use. If you
+require all data to be pointers the user is encouraged to heap allocate a
+large number of individual items, which is bad for performance.
+</p>
+</dd>
+<dt id="function-pointers">Function pointers</dt>
+<dd>
+<p>
+You write your library or algorithm to work with opaque types and when you
+need type-specific functionality, you call a function pointer given by the
+user.
+</p>
+<p>
+A good example of this in the standard C library is the <tt>qsort</tt>
+function. For moving things it just <tt>memcpy</tt>'s a void pointer, but
+for the actual comparison it calls the comparison function given by the
+user.
+</p>
+<p>
+The advantage of this approach is that it takes up very little code space -
+there is just one <tt>qsort</tt>.
+</p>
+<p>
+The disadvantages are that it is type unsafe &mdash; there is no way to check
+that the user's function pointer is the right one and it is annoying to use.
+The user has to define a (probably trivial) global function just to sort
+some data.
+</p>
+</dd>
+<dt id="inline-macros">Inline Macros</dt>
+<dd>
+<p>
+Another approach is to not define a function at all and just do the work in
+a macro. The classic K&amp;R definition of max is an example of this:
+</p>
+<div class="C">
+<pre>
+#define max(a, b) ((a) &gt; (b)? (a) : (b))
+</pre>
+</div>
+<p>
+Ignoring the multiple evaluation problem (a or b is evaluated twice, which
+can be expensive or surprising if it involves side-effects), this is not
+adequate for more advanced operations. Sans extensions, you can't really
+define or use local variables, you can't use recursion, you can't get the
+normal compiler errors when you pass the wrong type to the "function" and
+this forcibly inlines the code at every usage site.
+</p>
+<p>
+It is very easy to use though (it looks like a function).
+</p>
+</dd>
+<dt id="code-generating-macros">Code Generating Macros</dt>
+<dd>
+<p>
+Another approach is to actually generate a function with the actual types
+and call that generated function. To avoid having to actually copy-paste,
+you generate the function via a macro.
+</p>
+<pre>
+<span class="preproc">#</span><span class="preproc">define</span> <span class="macro" id="macro-combine">COMBINE</span>(a, b) a##b
+<span class="preproc">#</span><span class="preproc">define</span> <span class="macro" id="macro-make-max">MAKE_MAX</span>(<span class="type">T</span>, prefix) \
+  <span class="keyword">static</span> <span class="keyword">inline</span> \
+  <span class="type">T</span> <span class="macro">COMBINE</span>(prefix, max)(<span class="type">T</span> a, <span class="type">T</span> b){ \
+      <span class="keyword">if</span>(a &gt; b) <span class="keyword">return</span> a; \
+      <span class="keyword">return</span> b; \
+  }
+<span class="macro">MAKE_MAX</span>(<span class="type">int</span>, int_)
+
+<span class="preproc">#</span><span class="preproc">include</span> <span class="literal">&lt;assert.h&gt;</span>
+<span class="type">int</span> <span class="func" id="func-main">main</span>(<span class="type">void</span>){
+    <span class="type">int</span> x = <span class="func">int_max</span>(<span class="literal">1</span>, <span class="literal">2</span>);
+    assert(x == <span class="literal">2</span>);
+    <span class="keyword">return</span> <span class="literal">0</span>;
+}
+</pre>
+<p>
+This is type safe and you get the benefits of functions (separating
+implementation details from usage, local variables, early returns, etc.),
+but it becomes impossible to debug if you need to step through the generated
+code &mdash; the nature of C macros is everything will be on a single line.
+Checking the result of the macro expansion is also more difficult.
+</p>
+<p>
+Additionally, customizing the expanded code is difficult: you either need a
+large number of arguments to the macro or just forgo customization of things
+like prefixes to function names.
+</p>
+<p>
+Finally, just writing it is annoying. You need a <tt>\</tt> on every line,
+most editors give up on syntax highlighting it properly, etc.
+</p>
+</dd>
+<dt id="source-code-generation">Source Code Generation</dt>
+<dd>
+<p>
+Another alternative is to generate extra source files that then are compiled
+into your program. The issue with this is that it greatly complicates the
+building and compiling of your code. Suddenly you need a build system that
+is aware of the need to generate the code instead of just leveraging the C
+compiler that you already have. You step farther away from the ideal of just
+compiling with <tt>cc *.c -o program</tt>.
+</p>
+</dd>
+<dt id="copy-paste">Copy Paste</dt>
+<dd>
+<p>
+The manual version of source code generation is copy-pasting the data
+structure and functions every time you need a new one. This is a nightmare
+for maintainability &mdash; a bug copy-pasted 100 times might never get fixed,
+especially if that code is then altered and diverges.
+</p>
+</dd>
+<dt id="template-headers-with-multiple-inclusion">Template Headers with Multiple Inclusion</dt>
+<dd>
+<p>
+This approach is very similar to Code Generating Macros, but with the
+benefit of it being easy to check the expanded code, it is possible to debug
+and customization is much more straightforward thanks to <tt>#ifdef</tt>.
+The rest of this article will explain how they work.
+</p>
+</dd>
+</div>
+<div>
+<h2 id="template-headers">Template Headers</h2>
+<p>
+The idea of a template header is that you have a file that's meant to be
+included multiple times. Each time the file is included, it generates a new
+data structure or new functions, specialized to a given type or types, or
+really on anything you can imagine.
+</p>
+<p>
+The easiest way to explain this is via an example:
+</p>
+<pre>
+<span class="comment">// Darray.h</span>
+<span class="comment">// Include this header multiple times to implement a</span>
+<span class="comment">// simplistic dynamic array.  Before inclusion define at</span>
+<span class="comment">// least DARRAY_T to the type the dynamic array can hold.</span>
+<span class="comment">// See DARRAY_NAME, DARRAY_PREFIX and DARRAY_LINKAGE for</span>
+<span class="comment">// other customization points.</span>
+<span class="comment">//</span>
+<span class="comment">// If you define DARRAY_DECLS_ONLY, only the declarations</span>
+<span class="comment">// of the type and its function will be declared.</span>
+<span class="comment">//</span>
+
+<span class="preproc">#</span><span class="preproc">ifndef</span> <span class="macro">DARRAY_HEADER_H</span>
+<span class="preproc">#</span><span class="preproc">define</span> <span class="macro">DARRAY_HEADER_H</span>
+<span class="comment">// Inline functions, #defines and includes that will be</span>
+<span class="comment">// needed for all instantiations can go up here.</span>
+<span class="preproc">#</span><span class="preproc">include</span> <span class="literal">&lt;stdlib.h&gt;</span> <span class="comment">// realloc, size_t</span>
+
+<span class="preproc">#</span><span class="preproc">define</span> <span class="macro" id="macro-darray-impl">DARRAY_IMPL</span>(word) <span class="macro">DARRAY_COMB1</span>(<span class="macro">DARRAY_PREFIX</span>,word)
+<span class="preproc">#</span><span class="preproc">define</span> <span class="macro" id="macro-darray-comb1">DARRAY_COMB1</span>(pre, word) <span class="macro">DARRAY_COMB2</span>(pre, word)
+<span class="preproc">#</span><span class="preproc">define</span> <span class="macro" id="macro-darray-comb2">DARRAY_COMB2</span>(pre, word) pre##word
+
+<span class="preproc">#</span><span class="preproc">endif</span> <span class="comment">// DARRAY_HEADER_H</span>
+
+<span class="comment">// NOTE: this section is *not* guarded as it is intended</span>
+<span class="comment">// to be included multiple times.</span>
+
+<span class="preproc">#</span><span class="preproc">ifndef</span> <span class="type">DARRAY_T</span>
+<span class="preproc">#</span><span class="preproc">error</span> <span class="literal">"DARRAY_T must be defined"</span>
+<span class="preproc">#</span><span class="preproc">endif</span>
+
+<span class="comment">// The name of the data type to be generated.</span>
+<span class="comment">// If not given, will expand to something like</span>
+<span class="comment">// `darray_int` for an `int`.</span>
+<span class="preproc">#</span><span class="preproc">ifndef</span> <span class="type">DARRAY_NAME</span>
+<span class="preproc">#</span><span class="preproc">define</span> <span class="type">DARRAY_NAME</span>
+    <span class="macro">DARRAY_COMB1</span>(<span class="macro">DARRAY_COMB1</span>(darray,_), <span class="type">DARRAY_T</span>)
+<span class="preproc">#</span><span class="preproc">endif</span>
+
+<span class="comment">// Prefix for generated functions.</span>
+<span class="preproc">#</span><span class="preproc">ifndef</span> <span class="macro">DARRAY_PREFIX</span>
+<span class="preproc">#</span><span class="preproc">define</span> <span class="macro" id="macro-darray-prefix">DARRAY_PREFIX</span> <span class="macro">DARRAY_COMB1</span>(<span class="type">DARRAY_NAME</span>, _)
+<span class="preproc">#</span><span class="preproc">endif</span>
+
+<span class="comment">// Customize the linkage of the function.</span>
+<span class="preproc">#</span><span class="preproc">ifndef</span> <span class="macro">DARRAY_LINKAGE</span>
+<span class="preproc">#</span><span class="preproc">define</span> <span class="macro" id="macro-darray-linkage">DARRAY_LINKAGE</span> <span class="keyword">static</span> <span class="keyword">inline</span>
+<span class="preproc">#</span><span class="preproc">endif</span>
+
+<span class="keyword">typedef</span> <span class="type">struct</span> <span class="type">DARRAY_NAME</span> <span class="type">DARRAY_NAME</span>;
+<span class="type">struct</span> <span class="type">DARRAY_NAME</span> {
+    <span class="type">DARRAY_T</span>* items;
+    <span class="type">size_t</span> count;
+    <span class="type">size_t</span> capacity;
+};
+
+<span class="preproc">#</span><span class="preproc">define</span> <span class="macro" id="macro-darray-push">DARRAY_push</span> <span class="macro">DARRAY_IMPL</span>(push)
+
+<span class="preproc">#</span><span class="preproc">ifdef</span> <span class="macro">DARRAY_DECLS_ONLY</span>
+
+<span class="macro">DARRAY_LINKAGE</span>
+<span class="type">void</span>
+<span class="macro">DARRAY_push</span>(<span class="type">DARRAY_NAME</span>* array, <span class="type">DARRAY_T</span> item);
+
+<span class="preproc">#</span><span class="preproc">else</span>
+
+<span class="macro">DARRAY_LINKAGE</span>
+<span class="type">void</span>
+<span class="macro">DARRAY_push</span>(<span class="type">DARRAY_NAME</span>* array, <span class="type">DARRAY_T</span> item){
+    <span class="keyword">if</span>(array-&gt;count &gt;= array-&gt;capacity){
+        <span class="type">size_t</span> old_cap = array-&gt;capacity;
+        <span class="type">size_t</span> new_cap = old_cap?old_cap*<span class="literal">2</span>:<span class="literal">4</span>;
+        <span class="type">size_t</span> new_size = new_cap * <span class="keyword">sizeof</span>(<span class="type">DARRAY_T</span>);
+        array-&gt;items = <span class="func">realloc</span>(array-&gt;items, new_size);
+        array-&gt;capacity = new_cap;
+    }
+    array-&gt;items[array-&gt;count++] = item;
+}
+<span class="preproc">#</span><span class="preproc">endif</span>
+
+<span class="comment">// Cleanup</span>
+<span class="comment">// These need to be undef'ed so they can be redefined the</span>
+<span class="comment">// next time you need to instantiate this template.</span>
+<span class="preproc">#</span><span class="preproc">undef</span> <span class="type">DARRAY_T</span>
+<span class="preproc">#</span><span class="preproc">undef</span> <span class="macro">DARRAY_PREFIX</span>
+<span class="preproc">#</span><span class="preproc">undef</span> <span class="type">DARRAY_NAME</span>
+<span class="preproc">#</span><span class="preproc">undef</span> <span class="macro">DARRAY_LINKAGE</span>
+<span class="preproc">#</span><span class="preproc">undef</span> <span class="macro">DARRAY_push</span>
+<span class="preproc">#</span><span class="preproc">ifdef</span> <span class="macro">DARRAY_DECLS_ONLY</span>
+<span class="preproc">#</span><span class="preproc">undef</span> <span class="macro">DARRAY_DECLS_ONLY</span>
+<span class="preproc">#</span><span class="preproc">endif</span>
+</pre>
+<div>
+<h3 id="example-usage">Example Usage</h3>
+<pre>
+<span class="comment">// example.c</span>
+
+<span class="preproc">#</span><span class="preproc">include</span> <span class="literal">&lt;assert.h&gt;</span>
+<span class="preproc">#</span><span class="preproc">include</span> <span class="literal">&lt;stdio.h&gt;</span>
+
+<span class="preproc">#</span><span class="preproc">define</span> <span class="type">DARRAY_T</span> <span class="type">int</span>
+<span class="preproc">#</span><span class="preproc">define</span> <span class="macro" id="macro-darray-prefix">DARRAY_PREFIX</span> i
+<span class="preproc">#</span><span class="preproc">define</span> <span class="type">DARRAY_NAME</span> <span class="type">IntArray</span>
+<span class="comment">// Must be manually instantiated by #including the file</span>
+<span class="preproc">#</span><span class="preproc">include</span> <span class="literal">"darray.h"</span>
+
+<span class="type">int</span> <span class="func" id="func-main">main</span>(<span class="type">void</span>){
+    <span class="type">IntArray</span> ints = {<span class="literal">0</span>};
+    <span class="func">ipush</span>(&ints, <span class="literal">1</span>);
+    <span class="func">ipush</span>(&ints, <span class="literal">2</span>);
+    <span class="func">ipush</span>(&ints, <span class="literal">3</span>);
+    <span class="func">ipush</span>(&ints, <span class="literal">4</span>);
+    <span class="func">ipush</span>(&ints, <span class="literal">5</span>);
+    <span class="func">ipush</span>(&ints, <span class="literal">6</span>);
+    assert(ints.count == <span class="literal">6</span>);
+    assert(ints.items[<span class="literal">0</span>] == <span class="literal">1</span>);
+    assert(ints.items[<span class="literal">1</span>] == <span class="literal">2</span>);
+    assert(ints.items[<span class="literal">2</span>] == <span class="literal">3</span>);
+    assert(ints.items[<span class="literal">3</span>] == <span class="literal">4</span>);
+    assert(ints.items[<span class="literal">4</span>] == <span class="literal">5</span>);
+    assert(ints.items[<span class="literal">5</span>] == <span class="literal">6</span>);
+    assert(ints.capacity == <span class="literal">8</span>);
+    <span class="keyword">for</span>(<span class="type">size_t</span> i = <span class="literal">0</span>; i &lt; ints.count; i++){
+        <span class="func">printf</span>(<span class="literal">"[%zu] = %d\n"</span>, i, ints.items[i]);
+    }
+    <span class="func">free</span>(ints.items);
+    <span class="keyword">return</span> <span class="literal">0</span>;
+}
+</pre>
+</div>
+</div>
+<p>
+One reason this approach shines is that it is simple to debug the generation of
+the code. For example, you can simply see what the code expands to by a command
+like:
+</p>
+<div class="sh">
+<pre>
+$ cc -DDARRAY_T=int darray.h -E -P
+</pre>
+</div>
+<p>
+(assuming a gcc or clang-like cc).
+</p>
+<p>
+If you tried to do a similar thing with a Code Generating Macro, it would be a
+giant mess on a single line.
+</p>
+<p>
+The biggest benefit though is that if you have a bug in your generated code and
+an assertion fails or address-sanitizer complains &mdash; you have a real source
+file with a real location. You can step through the code in a debugger and it is
+readable and reasonable.
+</p>
+<p>
+The final benefit is that it is simple to implement customization points: check
+for a macro to be defined and if not use some default behavior. This can get
+pretty ugly, but it is better than a huge number of arguments to a Code
+Generating Macro.
+</p>
+<div>
+<h2 id="conclusion">Conclusion</h2>
+<p>
+By leveraging the ability of the preprocessor to include files multiple times
+and the limited amount of introspection it provides, you can generate
+efficient, specialized code without resorting to generating external files,
+giving up type safety or copy-pasting code around.
+</p>
+<p>
+Newer languages than C have better solutions to this problem, but there are
+many situations you still want to write some C and need things like type safe
+dynamic arrays, hashtables or even sorting functions (this approach can easily
+be used to specialize a quicksort).
+</p>
+</div>
+</article>
+
+<div>
+<h2 id="copyright">Copyright</h2>
+<p>
+All code in this article is released into the public domain.
+</p>
+</div>
+</body>
+</html>

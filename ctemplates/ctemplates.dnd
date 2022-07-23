@@ -1,0 +1,229 @@
+::css
+  body {
+    max-width: 44em;
+    margin: auto;
+    margin-bottom: 40em;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    padding: 12px;
+  }
+  dt {
+    font-weight: bold;
+  }
+  pre {
+    padding-left: 2em;
+    padding-right: 1em;
+    padding-top: 1ex;
+    padding-bottom: 1ex;
+    background-color: #fdf6e3;
+    border-radius: 16px;
+    font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+    font-size: 1rem;
+    overflow-x: auto;
+    line-height: 125%;
+  }
+  a {
+    color: rgb(0, 0, 238);
+  }
+  tt {
+    background-color: #eee;
+    padding: 2px;
+  }
+  pre .keyword {
+    color: #049407;
+  }
+  pre .comment {
+    color: #000;
+    font-style: italic;
+  }
+  pre .literal {
+    color: #2aa198;
+  }
+  pre .type {
+    color: #ff8105;
+  }
+  pre .macro {
+    color: #66a;
+  }
+  pre .func {
+    color: #213dde;
+  }
+  pre .preproc {
+    color: #777;
+  }
+  /*endcss*/
+::toc
+Templates in C::title
+<i>David Priver, July 22nd, 2022</i>
+
+::raw
+  <article>
+
+Sometimes I see people on the internet sharing their generic libraries in C.
+More often than not, they turn out to use some giant macro that generates a huge
+amount of code on a single source line. I thought I would show a better way of
+doing it if you need to write some C and don't want to copy-paste yet another
+dynamic array or hash table.
+
+None of these ideas are new --- I am sure people were doing this in the 80s ---
+but not everyone is aware of them.
+
+Note, <tt>_Generic</tt> has nothing to do with this (althought you could use it
+to simulate overloads if you generate a lot of code).
+
+Generics in C::md
+  There are a few ways of creating generic data structures or algorithms in C:
+
+  Void Pointers::def
+    If the data you are working with can be coerced to a void pointer, you can
+    side step the problem by writing a single implementation that only works
+    with void pointers or only with raw bytes. When the user actually uses it
+    they have to cast back to the original type and to be careful not to get
+    confused about which data structure is which.
+
+    This is easy to implement, but is error-prone and type-unsafe to use. If you
+    require all data to be pointers the user is encouraged to heap allocate a
+    large number of individual items, which is bad for performance.
+
+  Function pointers::def
+    You write your library or algorithm to work with opaque types and when you
+    need type-specific functionality, you call a function pointer given by the
+    user.
+
+    A good example of this in the standard C library is the <tt>qsort</tt>
+    function. For moving things it just <tt>memcpy</tt>'s a void pointer, but
+    for the actual comparison it calls the comparison function given by the
+    user.
+
+    The advantage of this approach is that it takes up very little code space -
+    there is just one <tt>qsort</tt>.
+
+    The disadvantages are that it is type unsafe --- there is no way to check
+    that the user's function pointer is the right one and it is annoying to use.
+    The user has to define a (probably trivial) global function just to sort
+    some data.
+
+  Inline Macros::def
+    Another approach is to not define a function at all and just do the work in
+    a macro. The classic K&R definition of max is an example of this:
+
+    ::pre .C
+      #define max(a, b) ((a) > (b)? (a) : (b))
+    Ignoring the multiple evaluation problem (a or b is evaluated twice, which
+    can be expensive or surprising if it involves side-effects), this is not
+    adequate for more advanced operations. Sans extensions, you can't really
+    define or use local variables, you can't use recursion, you can't get the
+    normal compiler errors when you pass the wrong type to the "function" and
+    this forcibly inlines the code at every usage site.
+
+    It is very easy to use though (it looks like a function).
+
+  Code Generating Macros::def
+    Another approach is to actually generate a function with the actual types
+    and call that generated function. To avoid having to actually copy-paste,
+    you generate the function via a macro.
+
+    ::raw
+      <pre>
+    ::raw .C @fixme #import
+      cgm.c.html
+    ::raw
+      </pre>
+    ::js
+      node = ctx.select_nodes({attributes:['fixme']})[0];
+      for(let i = 1; i < 6; i++){
+        node.children[i].header += ' \\';
+      }
+      //endjs
+
+    This is type safe and you get the benefits of functions (separating
+    implementation details from usage, local variables, early returns, etc.),
+    but it becomes impossible to debug if you need to step through the generated
+    code --- the nature of C macros is everything will be on a single line.
+    Checking the result of the macro expansion is also more difficult.
+
+    Additionally, customizing the expanded code is difficult: you either need a
+    large number of arguments to the macro or just forgo customization of things
+    like prefixes to function names.
+
+    Finally, just writing it is annoying. You need a <tt>\</tt> on every line,
+    most editors give up on syntax highlighting it properly, etc.
+
+  Source Code Generation::def
+    Another alternative is to generate extra source files that then are compiled
+    into your program. The issue with this is that it greatly complicates the
+    building and compiling of your code. Suddenly you need a build system that
+    is aware of the need to generate the code instead of just leveraging the C
+    compiler that you already have. You step farther away from the ideal of just
+    compiling with <tt>cc *.c -o program</tt>.
+
+  Copy Paste::def
+    The manual version of source code generation is copy-pasting the data
+    structure and functions every time you need a new one. This is a nightmare
+    for maintainability --- a bug copy-pasted 100 times might never get fixed,
+    especially if that code is then altered and diverges.
+
+  Template Headers with Multiple Inclusion::def
+    This approach is very similar to Code Generating Macros, but with the
+    benefit of it being easy to check the expanded code, it is possible to debug
+    and customization is much more straightforward thanks to <tt>#ifdef</tt>.
+    The rest of this article will explain how they work.
+
+Template Headers::md
+  The idea of a template header is that you have a file that's meant to be
+  included multiple times. Each time the file is included, it generates a new
+  data structure or new functions, specialized to a given type or types, or
+  really on anything you can imagine.
+
+  The easiest way to explain this is via an example:
+
+  ::raw
+    <pre>
+  ::raw .C #import
+    darray.h.html
+  ::raw
+    </pre>
+  Example Usage::md
+    ::raw
+      <pre>
+    ::raw .C #import
+      example.c.html
+    ::raw
+      </pre>
+One reason this approach shines is that it is simple to debug the generation of
+the code. For example, you can simply see what the code expands to by a command
+like:
+
+::pre .sh
+  $ cc -DDARRAY_T=int darray.h -E -P
+(assuming a gcc or clang-like cc).
+
+If you tried to do a similar thing with a Code Generating Macro, it would be a
+giant mess on a single line.
+
+The biggest benefit though is that if you have a bug in your generated code and
+an assertion fails or address-sanitizer complains --- you have a real source
+file with a real location. You can step through the code in a debugger and it is
+readable and reasonable.
+
+The final benefit is that it is simple to implement customization points: check
+for a macro to be defined and if not use some default behavior. This can get
+pretty ugly, but it is better than a huge number of arguments to a Code
+Generating Macro.
+
+Conclusion::md
+  By leveraging the ability of the preprocessor to include files multiple times
+  and the limited amount of introspection it provides, you can generate
+  efficient, specialized code without resorting to generating external files,
+  giving up type safety or copy-pasting code around.
+
+  Newer languages than C have better solutions to this problem, but there are
+  many situations you still want to write some C and need things like type safe
+  dynamic arrays, hashtables or even sorting functions (this approach can easily
+  be used to specialize a quicksort).
+
+::raw
+  </article>
+
+Copyright::md
+  All code in this article is released into the public domain.
+
