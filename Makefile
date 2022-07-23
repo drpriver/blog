@@ -1,11 +1,11 @@
 Depends: ; mkdir -p $@
 Depends/build: ; mkdir -p $@
-blog: ; mkdir -p $@
+docs: ; mkdir -p $@
 build: ; mkdir -p $@
 include $(wildcard Depends/*.dep)
 include $(wildcard Depends/build/*.dep)
 
-blog/%.html: build/%.html | build blog
+docs/%.html: build/%.html | build docs
 	cp $< $@
 
 # ctemplates post
@@ -27,13 +27,13 @@ build/ctemplates.html: \
 
 .PHONY: all
 all: \
-	blog/ctemplates.html \
+	docs/ctemplates.html \
 
 
 .PHONY: clean
 clean:
 	rm -rf Depends
 	rm -rf build
-	rm -rf blog
+	rm -rf docs
 
 .DEFAULT_GOAL:=all
