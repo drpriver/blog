@@ -1,0 +1,19 @@
+David's Blog::title
+
+Welcome to my blog!
+
+Feel free to check out one of the following articles:
+
+- [Templates in C | ctemplates]
+
+::links
+  ctemplates = ctemplates.html
+::css
+  body {
+    max-width: 44em;
+    margin: auto;
+    margin-bottom: 40em;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    padding: 12px;
+  }
+  /*endcss*/

@@ -25,9 +25,14 @@ build/ctemplates.html: \
 	build/ctemplates/darray.h.html \
 	build/ctemplates/example.c.html
 
+# index
+build/index.html: index.dnd
+	dndc $< -o $@ -d Depends/$@
+
 .PHONY: all
 all: \
 	docs/ctemplates.html \
+	docs/index.html \
 
 
 .PHONY: clean
