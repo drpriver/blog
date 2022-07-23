@@ -288,8 +288,7 @@ The easiest way to explain this is via an example:
 <span class="comment">// If not given, will expand to something like</span>
 <span class="comment">// `darray_int` for an `int`.</span>
 <span class="preproc">#</span><span class="preproc">ifndef</span> <span class="type">DARRAY_NAME</span>
-<span class="preproc">#</span><span class="preproc">define</span> <span class="type">DARRAY_NAME</span>
-    <span class="macro">DARRAY_COMB1</span>(<span class="macro">DARRAY_COMB1</span>(darray,_), <span class="type">DARRAY_T</span>)
+<span class="preproc">#</span><span class="preproc">define</span> <span class="type">DARRAY_NAME</span> <span class="macro">DARRAY_COMB1</span>(<span class="macro">DARRAY_COMB1</span>(darray,_), <span class="type">DARRAY_T</span>)
 <span class="preproc">#</span><span class="preproc">endif</span>
 
 <span class="comment">// Prefix for generated functions.</span>

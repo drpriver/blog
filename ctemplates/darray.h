@@ -32,8 +32,7 @@
 // If not given, will expand to something like
 // `darray_int` for an `int`.
 #ifndef DARRAY_NAME
-#define DARRAY_NAME \
-    DARRAY_COMB1(DARRAY_COMB1(darray,_), DARRAY_T)
+#define DARRAY_NAME DARRAY_COMB1(DARRAY_COMB1(darray,_), DARRAY_T)
 #endif
 
 // Prefix for generated functions.
