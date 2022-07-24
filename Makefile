@@ -8,6 +8,9 @@ include $(wildcard Depends/build/*.dep)
 docs/%.html: build/%.html | build docs
 	cp $< $@
 
+PAGES:= docs/ctemplates.html \
+	docs/index.html \
+
 # ctemplates post
 
 build/ctemplates: ; mkdir -p $@
@@ -29,10 +32,15 @@ build/ctemplates.html: \
 build/index.html: index.dnd
 	dndc $< -o $@ -d Depends/$@
 
+# rss
+feed.xml: $(PAGES)
+	python3 do_rss.py
+
+docs/feed.xml: feed.xml | docs
+	cp $< $@
+
 .PHONY: all
-all: \
-	docs/ctemplates.html \
-	docs/index.html \
+all: docs/feed.xml $(PAGES)
 
 
 .PHONY: clean
