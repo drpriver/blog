@@ -1,9 +1,9 @@
 <?xml version='1.0' encoding='utf-8'?>
 <rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
   <channel>
-    <atom:link href="https://davidpriver.com/feed.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://www.davidpriver.com/feed.xml" rel="self" type="application/rss+xml" />
     <title>DavidsBlog</title>
-    <link>https://davidpriver.com</link>
+    <link>https://www.davidpriver.com</link>
     <description>David's Blog</description>
     <language>en-us</language>
   <item><title>Templates in C</title><description>&lt;!DOCTYPE html&gt;
@@ -445,5 +445,9 @@ All code in this article is released into the public domain.
 &lt;/div&gt;
 &lt;/body&gt;
 &lt;/html&gt;
-</description><pubDate>Sun, 24 Jul 2022 03:48:51 GMT</pubDate></item></channel>
+</description>
+<pubDate>Sun, 24 Jul 2022 03:48:51 GMT</pubDate>
+<link>https://www.davidpriver.com/ctemplates.html</link>
+</item>
+</channel>
 </rss>

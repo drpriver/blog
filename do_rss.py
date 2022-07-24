@@ -32,6 +32,8 @@ def main() -> None:
         if not pubtext.endswith('T'):
             pubtext += 'GMT'
         pubdate.text = pubtext
+        link = SubElement(item, 'link')
+        link.text = 'https://www.davidpriver.com/'+page
 
     with open('feed.xml', 'wb') as fp:
         # fp.write(b'<?xml version="1.0" encoding="utf-8"?>\n')
