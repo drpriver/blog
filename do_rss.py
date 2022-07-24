@@ -34,6 +34,8 @@ def main() -> None:
         pubdate.text = pubtext
         link = SubElement(item, 'link')
         link.text = 'https://www.davidpriver.com/'+page
+        author = SubElement(item, 'author')
+        author.text = 'David'
 
     with open('feed.xml', 'wb') as fp:
         # fp.write(b'<?xml version="1.0" encoding="utf-8"?>\n')
