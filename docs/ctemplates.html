@@ -62,6 +62,9 @@ pre .preproc {
 </style>
 </head>
 <body>
+<p>
+<a href="https://www.davidpriver.com">Home</a>
+</p>
 <nav>
 <ul>
 <li><a href="#generics-in-c">Generics in C</a>
@@ -360,12 +363,12 @@ The easiest way to explain this is via an example:
 
 <span class="type">int</span> <span class="func" id="func-main">main</span>(<span class="type">void</span>){
     <span class="type">IntArray</span> ints = {<span class="literal">0</span>};
-    <span class="func">ipush</span>(&ints, <span class="literal">1</span>);
-    <span class="func">ipush</span>(&ints, <span class="literal">2</span>);
-    <span class="func">ipush</span>(&ints, <span class="literal">3</span>);
-    <span class="func">ipush</span>(&ints, <span class="literal">4</span>);
-    <span class="func">ipush</span>(&ints, <span class="literal">5</span>);
-    <span class="func">ipush</span>(&ints, <span class="literal">6</span>);
+    <span class="func">ipush</span>(&amp;ints, <span class="literal">1</span>);
+    <span class="func">ipush</span>(&amp;ints, <span class="literal">2</span>);
+    <span class="func">ipush</span>(&amp;ints, <span class="literal">3</span>);
+    <span class="func">ipush</span>(&amp;ints, <span class="literal">4</span>);
+    <span class="func">ipush</span>(&amp;ints, <span class="literal">5</span>);
+    <span class="func">ipush</span>(&amp;ints, <span class="literal">6</span>);
     assert(ints.count == <span class="literal">6</span>);
     assert(ints.items[<span class="literal">0</span>] == <span class="literal">1</span>);
     assert(ints.items[<span class="literal">1</span>] == <span class="literal">2</span>);

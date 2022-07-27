@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>run(**vars(args))</title>
+<style>
+body {
+  max-width: 44em;
+  margin: auto;
+  margin-bottom: 40em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 12px;
+  background-color: #fff;
+  color: #000;
+}
+dt {
+  font-weight: bold;
+}
+pre {
+  padding-left: 2em;
+  padding-right: 1em;
+  padding-top: 1ex;
+  padding-bottom: 1ex;
+  background-color: #fdf6e3;
+  border-radius: 16px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  overflow-x: auto;
+  line-height: 125%;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+tt {
+  background-color: #eee;
+  padding: 2px;
+}
+pre .keyword {
+  color: #049407;
+}
+pre .comment {
+  color: #000;
+  font-style: italic;
+}
+pre .literal {
+  color: #2aa198;
+}
+pre .type {
+  color: #ff8105;
+}
+pre .macro {
+  color: #66a;
+}
+pre .func {
+  color: #213dde;
+}
+pre .preproc {
+  color: #777;
+}
+h1, #runvarsargs {
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+}
+/*endcss*/
+.python .keyword {
+  color: blue;
+}
+.python .type {
+  color: green;
+}
+.python .control {
+  color: rgb(200, 100, 0);
+}
+.python .comment {
+  color: grey;
+}
+.python .None {
+  color: purple;
+}
+.python .string {
+  color: rgb(220, 0, 0);
+}
+.python .number {
+  color: teal;
+}
+.python .import {
+  color: purple;
+}
+/*endcss*/
+</style>
+</head>
+<body>
+<p>
+<a href="https://www.davidpriver.com">Home</a>
+</p>
+<nav>
+<ul>
+<li><a href="#runvarsargs">run(**vars(args))</a></li>
+<li><a href="#copyright">Copyright</a></li>
+</ul>
+</nav><article>
+<div>
+<h2 id="runvarsargs">run(**vars(args))</h2>
+<p>
+<i>David Priver, July 27th, 2022</i>
+</p>
+<p>
+Python has the pretty decent argument parsing module <tt><a href="https://docs.python.org/3/library/argparse.html">argparse</a></tt> as part
+of the standard library. It offers a procedural API to building up a parser
+for a program's command line arguments. After calling <tt>parse_args</tt>, you
+get back a simple namespace object that contains the values as defined by your
+parser (which I'll refer to as <tt>args</tt>.)
+</p>
+<pre class="python">
+<span class="comment"># some_script.py</span>
+<span class="import">import</span> argparse
+
+<span class="keyword">def</span> main() -&gt; <span class="None">None</span>:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(<span class="string">'N'</span>, type=<span class="type">int</span>)
+    parser.add_argument(<span class="string">'pid'</span>, type=<span class="type">int</span>)
+    parser.add_argument(<span class="string">'--with-candles'</span>, action=<span class="string">'store_true'</span>)
+
+    args = parser.parse_args()
+    ...
+
+<span class="control">if</span> __name__ == <span class="string">'__main__'</span>:
+    main()
+</pre>
+<p>
+There's just one problem: the only way to tell what is in this returned
+<tt>args</tt> is by reading the code building up the parser.
+</p>
+<p>
+What I've found to be an effective way to help with that problem is to
+immediately grab the attributes off of the <tt>args</tt> and pass them to a
+function that actually does the work (normally named <tt>run</tt>). You want
+to spend as little time as possible with this dynamic, unstructured
+<tt>args</tt> as possible.
+</p>
+<pre class="python">
+<span class="comment"># some_script.py</span>
+<span class="import">import</span> argparse
+
+<span class="keyword">def</span> main() -&gt; <span class="None">None</span>:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(<span class="string">'N'</span>, type=<span class="type">int</span>)
+    parser.add_argument(<span class="string">'pid'</span>, type=<span class="type">int</span>)
+    parser.add_argument(<span class="string">'--with-candles'</span>, action=<span class="string">'store_true'</span>)
+
+    args = parser.parse_args()
+    run(args.N, args.pid, args.with_candles)
+
+
+<span class="keyword">def</span> run(N:<span class="type">int</span>, pid:<span class="type">int</span>, with_candles:<span class="type">bool</span>=<span class="None">False</span>) -&gt; <span class="None">None</span>:
+    ...
+
+<span class="control">if</span> __name__ == <span class="string">'__main__'</span>:
+    main()
+</pre>
+<p>
+Having a separate <tt>run</tt> function is nice anyway, as it means you can
+write scripts that import your script and just call the <tt>run</tt> function:
+</p>
+<pre class="python">
+<span class="comment"># myscript.py</span>
+<span class="import">import</span> some_script
+<span class="import">import</span> another_script
+
+some_script.run(<span class="number">1</span>, <span class="number">2</span>, with_candles=<span class="None">True</span>)
+another_script.run(<span class="string">'big'</span>, <span class="number">1</span>, <span class="string">'hello.txt'</span>)
+</pre>
+<p>
+However, this <tt>run</tt> function poses its own problem. It's tedious to
+grab all of the attributes off of <tt>args</tt>, which tempts you to the dark
+side of just passing the <tt>args</tt> object around in your application,
+making it very hard to understand what's going on.
+</p>
+<p>
+Luckily, there is a relatively obscure builtin function in python called
+<tt><a href="https://docs.python.org/3/library/functions.html#vars">vars</a></tt>. <tt>vars</tt> (when given an argument) basically grabs all of
+the attributes off of an object and puts them into a <tt>dict</tt>. Coupling
+that with python's convenient <tt>**</tt> for dictionary unpacking, you are
+saved the trouble of manually peeling the attributes off yourself. Thus the
+title of this article: you use the incantation <tt>run(**vars(args))</tt>
+immediately after parsing command-line arguments.
+</p>
+<pre class="python">
+<span class="comment"># some_script.py</span>
+<span class="import">import</span> argparse
+
+<span class="keyword">def</span> main() -&gt; <span class="None">None</span>:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(<span class="string">'N'</span>, type=<span class="type">int</span>)
+    parser.add_argument(<span class="string">'pid'</span>, type=<span class="type">int</span>)
+    parser.add_argument(<span class="string">'--with-candles'</span>, action=<span class="string">'store_true'</span>)
+
+    args = parser.parse_args()
+    run(**vars(args)) <span class="comment"># Here it is.</span>
+
+<span class="keyword">def</span> run(N:<span class="type">int</span>, pid:<span class="type">int</span>, with_candles:<span class="type">bool</span>=<span class="None">False</span>) -&gt; <span class="None">None</span>:
+    ...
+
+<span class="control">if</span> __name__ == <span class="string">'__main__'</span>:
+    main()
+</pre>
+<p>
+Relatively simple pattern, but I've found it to be useful. I'm sure there are
+argument parsing libraries that do nicer things, but with this pattern you can
+stick to the standard library which lessens the dependency problem.
+</p>
+</div>
+</article>
+
+<div>
+<h2 id="copyright">Copyright</h2>
+<p>
+All code in this article is released into the public domain.
+</p>
+</div>
+</body>
+</html>

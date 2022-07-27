@@ -150,7 +150,7 @@ def fix_args(args:List[str], source_file:str) -> List[str]:
     return fixed
 
 def escape(s:str) -> str:
-    return s.replace('<', '&lt;').replace('>', '&gt;')
+    return s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
 def same_path(a:str, b:str) -> bool:
     # os.path.relpath can throw on windows

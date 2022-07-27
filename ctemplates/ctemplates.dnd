@@ -53,6 +53,7 @@
     color: #777;
   }
   /*endcss*/
+[Home | home]
 ::toc
 Templates in C::title
 <i>David Priver, July 22nd, 2022</i>
@@ -229,3 +230,6 @@ Conclusion::md
 Copyright::md
   All code in this article is released into the public domain.
 
+::links
+  home = https://www.davidpriver.com
+  

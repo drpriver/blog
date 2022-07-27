@@ -70,6 +70,9 @@ pre .preproc {
 &lt;/style&gt;
 &lt;/head&gt;
 &lt;body&gt;
+&lt;p&gt;
+&lt;a href="https://www.davidpriver.com"&gt;Home&lt;/a&gt;
+&lt;/p&gt;
 &lt;nav&gt;
 &lt;ul&gt;
 &lt;li&gt;&lt;a href="#generics-in-c"&gt;Generics in C&lt;/a&gt;
@@ -368,12 +371,12 @@ The easiest way to explain this is via an example:
 
 &lt;span class="type"&gt;int&lt;/span&gt; &lt;span class="func" id="func-main"&gt;main&lt;/span&gt;(&lt;span class="type"&gt;void&lt;/span&gt;){
     &lt;span class="type"&gt;IntArray&lt;/span&gt; ints = {&lt;span class="literal"&gt;0&lt;/span&gt;};
-    &lt;span class="func"&gt;ipush&lt;/span&gt;(&amp;ints, &lt;span class="literal"&gt;1&lt;/span&gt;);
-    &lt;span class="func"&gt;ipush&lt;/span&gt;(&amp;ints, &lt;span class="literal"&gt;2&lt;/span&gt;);
-    &lt;span class="func"&gt;ipush&lt;/span&gt;(&amp;ints, &lt;span class="literal"&gt;3&lt;/span&gt;);
-    &lt;span class="func"&gt;ipush&lt;/span&gt;(&amp;ints, &lt;span class="literal"&gt;4&lt;/span&gt;);
-    &lt;span class="func"&gt;ipush&lt;/span&gt;(&amp;ints, &lt;span class="literal"&gt;5&lt;/span&gt;);
-    &lt;span class="func"&gt;ipush&lt;/span&gt;(&amp;ints, &lt;span class="literal"&gt;6&lt;/span&gt;);
+    &lt;span class="func"&gt;ipush&lt;/span&gt;(&amp;amp;ints, &lt;span class="literal"&gt;1&lt;/span&gt;);
+    &lt;span class="func"&gt;ipush&lt;/span&gt;(&amp;amp;ints, &lt;span class="literal"&gt;2&lt;/span&gt;);
+    &lt;span class="func"&gt;ipush&lt;/span&gt;(&amp;amp;ints, &lt;span class="literal"&gt;3&lt;/span&gt;);
+    &lt;span class="func"&gt;ipush&lt;/span&gt;(&amp;amp;ints, &lt;span class="literal"&gt;4&lt;/span&gt;);
+    &lt;span class="func"&gt;ipush&lt;/span&gt;(&amp;amp;ints, &lt;span class="literal"&gt;5&lt;/span&gt;);
+    &lt;span class="func"&gt;ipush&lt;/span&gt;(&amp;amp;ints, &lt;span class="literal"&gt;6&lt;/span&gt;);
     assert(ints.count == &lt;span class="literal"&gt;6&lt;/span&gt;);
     assert(ints.items[&lt;span class="literal"&gt;0&lt;/span&gt;] == &lt;span class="literal"&gt;1&lt;/span&gt;);
     assert(ints.items[&lt;span class="literal"&gt;1&lt;/span&gt;] == &lt;span class="literal"&gt;2&lt;/span&gt;);
@@ -448,7 +451,229 @@ All code in this article is released into the public domain.
 </description>
 <pubDate>Sun, 24 Jul 2022 03:48:51 GMT</pubDate>
 <link>https://www.davidpriver.com/ctemplates.html</link>
-<author>David</author>
+<author>david@davidpriver.com</author>
 </item>
-</channel>
+<item><title>run(**vars(args))</title><description>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+&lt;meta charset="UTF-8"&gt;
+&lt;meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"&gt;
+&lt;title&gt;run(**vars(args))&lt;/title&gt;
+&lt;style&gt;
+body {
+  max-width: 44em;
+  margin: auto;
+  margin-bottom: 40em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 12px;
+  background-color: #fff;
+  color: #000;
+}
+dt {
+  font-weight: bold;
+}
+pre {
+  padding-left: 2em;
+  padding-right: 1em;
+  padding-top: 1ex;
+  padding-bottom: 1ex;
+  background-color: #fdf6e3;
+  border-radius: 16px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  overflow-x: auto;
+  line-height: 125%;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+tt {
+  background-color: #eee;
+  padding: 2px;
+}
+pre .keyword {
+  color: #049407;
+}
+pre .comment {
+  color: #000;
+  font-style: italic;
+}
+pre .literal {
+  color: #2aa198;
+}
+pre .type {
+  color: #ff8105;
+}
+pre .macro {
+  color: #66a;
+}
+pre .func {
+  color: #213dde;
+}
+pre .preproc {
+  color: #777;
+}
+h1, #runvarsargs {
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+}
+/*endcss*/
+.python .keyword {
+  color: blue;
+}
+.python .type {
+  color: green;
+}
+.python .control {
+  color: rgb(200, 100, 0);
+}
+.python .comment {
+  color: grey;
+}
+.python .None {
+  color: purple;
+}
+.python .string {
+  color: rgb(220, 0, 0);
+}
+.python .number {
+  color: teal;
+}
+.python .import {
+  color: purple;
+}
+/*endcss*/
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;p&gt;
+&lt;a href="https://www.davidpriver.com"&gt;Home&lt;/a&gt;
+&lt;/p&gt;
+&lt;nav&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href="#runvarsargs"&gt;run(**vars(args))&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#copyright"&gt;Copyright&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/nav&gt;&lt;article&gt;
+&lt;div&gt;
+&lt;h2 id="runvarsargs"&gt;run(**vars(args))&lt;/h2&gt;
+&lt;p&gt;
+&lt;i&gt;David Priver, July 27th, 2022&lt;/i&gt;
+&lt;/p&gt;
+&lt;p&gt;
+Python has the pretty decent argument parsing module &lt;tt&gt;&lt;a href="https://docs.python.org/3/library/argparse.html"&gt;argparse&lt;/a&gt;&lt;/tt&gt; as part
+of the standard library. It offers a procedural API to building up a parser
+for a program's command line arguments. After calling &lt;tt&gt;parse_args&lt;/tt&gt;, you
+get back a simple namespace object that contains the values as defined by your
+parser (which I'll refer to as &lt;tt&gt;args&lt;/tt&gt;.)
+&lt;/p&gt;
+&lt;pre class="python"&gt;
+&lt;span class="comment"&gt;# some_script.py&lt;/span&gt;
+&lt;span class="import"&gt;import&lt;/span&gt; argparse
+
+&lt;span class="keyword"&gt;def&lt;/span&gt; main() -&amp;gt; &lt;span class="None"&gt;None&lt;/span&gt;:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&lt;span class="string"&gt;'N'&lt;/span&gt;, type=&lt;span class="type"&gt;int&lt;/span&gt;)
+    parser.add_argument(&lt;span class="string"&gt;'pid'&lt;/span&gt;, type=&lt;span class="type"&gt;int&lt;/span&gt;)
+    parser.add_argument(&lt;span class="string"&gt;'--with-candles'&lt;/span&gt;, action=&lt;span class="string"&gt;'store_true'&lt;/span&gt;)
+
+    args = parser.parse_args()
+    ...
+
+&lt;span class="control"&gt;if&lt;/span&gt; __name__ == &lt;span class="string"&gt;'__main__'&lt;/span&gt;:
+    main()
+&lt;/pre&gt;
+&lt;p&gt;
+There's just one problem: the only way to tell what is in this returned
+&lt;tt&gt;args&lt;/tt&gt; is by reading the code building up the parser.
+&lt;/p&gt;
+&lt;p&gt;
+What I've found to be an effective way to help with that problem is to
+immediately grab the attributes off of the &lt;tt&gt;args&lt;/tt&gt; and pass them to a
+function that actually does the work (normally named &lt;tt&gt;run&lt;/tt&gt;). You want
+to spend as little time as possible with this dynamic, unstructured
+&lt;tt&gt;args&lt;/tt&gt; as possible.
+&lt;/p&gt;
+&lt;pre class="python"&gt;
+&lt;span class="comment"&gt;# some_script.py&lt;/span&gt;
+&lt;span class="import"&gt;import&lt;/span&gt; argparse
+
+&lt;span class="keyword"&gt;def&lt;/span&gt; main() -&amp;gt; &lt;span class="None"&gt;None&lt;/span&gt;:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&lt;span class="string"&gt;'N'&lt;/span&gt;, type=&lt;span class="type"&gt;int&lt;/span&gt;)
+    parser.add_argument(&lt;span class="string"&gt;'pid'&lt;/span&gt;, type=&lt;span class="type"&gt;int&lt;/span&gt;)
+    parser.add_argument(&lt;span class="string"&gt;'--with-candles'&lt;/span&gt;, action=&lt;span class="string"&gt;'store_true'&lt;/span&gt;)
+
+    args = parser.parse_args()
+    run(args.N, args.pid, args.with_candles)
+
+
+&lt;span class="keyword"&gt;def&lt;/span&gt; run(N:&lt;span class="type"&gt;int&lt;/span&gt;, pid:&lt;span class="type"&gt;int&lt;/span&gt;, with_candles:&lt;span class="type"&gt;bool&lt;/span&gt;=&lt;span class="None"&gt;False&lt;/span&gt;) -&amp;gt; &lt;span class="None"&gt;None&lt;/span&gt;:
+    ...
+
+&lt;span class="control"&gt;if&lt;/span&gt; __name__ == &lt;span class="string"&gt;'__main__'&lt;/span&gt;:
+    main()
+&lt;/pre&gt;
+&lt;p&gt;
+Having a separate &lt;tt&gt;run&lt;/tt&gt; function is nice anyway, as it means you can
+write scripts that import your script and just call the &lt;tt&gt;run&lt;/tt&gt; function:
+&lt;/p&gt;
+&lt;pre class="python"&gt;
+&lt;span class="comment"&gt;# myscript.py&lt;/span&gt;
+&lt;span class="import"&gt;import&lt;/span&gt; some_script
+&lt;span class="import"&gt;import&lt;/span&gt; another_script
+
+some_script.run(&lt;span class="number"&gt;1&lt;/span&gt;, &lt;span class="number"&gt;2&lt;/span&gt;, with_candles=&lt;span class="None"&gt;True&lt;/span&gt;)
+another_script.run(&lt;span class="string"&gt;'big'&lt;/span&gt;, &lt;span class="number"&gt;1&lt;/span&gt;, &lt;span class="string"&gt;'hello.txt'&lt;/span&gt;)
+&lt;/pre&gt;
+&lt;p&gt;
+However, this &lt;tt&gt;run&lt;/tt&gt; function poses its own problem. It's tedious to
+grab all of the attributes off of &lt;tt&gt;args&lt;/tt&gt;, which tempts you to the dark
+side of just passing the &lt;tt&gt;args&lt;/tt&gt; object around in your application,
+making it very hard to understand what's going on.
+&lt;/p&gt;
+&lt;p&gt;
+Luckily, there is a relatively obscure builtin function in python called
+&lt;tt&gt;&lt;a href="https://docs.python.org/3/library/functions.html#vars"&gt;vars&lt;/a&gt;&lt;/tt&gt;. &lt;tt&gt;vars&lt;/tt&gt; (when given an argument) basically grabs all of
+the attributes off of an object and puts them into a &lt;tt&gt;dict&lt;/tt&gt;. Coupling
+that with python's convenient &lt;tt&gt;**&lt;/tt&gt; for dictionary unpacking, you are
+saved the trouble of manually peeling the attributes off yourself. Thus the
+title of this article: you use the incantation &lt;tt&gt;run(**vars(args))&lt;/tt&gt;
+immediately after parsing command-line arguments.
+&lt;/p&gt;
+&lt;pre class="python"&gt;
+&lt;span class="comment"&gt;# some_script.py&lt;/span&gt;
+&lt;span class="import"&gt;import&lt;/span&gt; argparse
+
+&lt;span class="keyword"&gt;def&lt;/span&gt; main() -&amp;gt; &lt;span class="None"&gt;None&lt;/span&gt;:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&lt;span class="string"&gt;'N'&lt;/span&gt;, type=&lt;span class="type"&gt;int&lt;/span&gt;)
+    parser.add_argument(&lt;span class="string"&gt;'pid'&lt;/span&gt;, type=&lt;span class="type"&gt;int&lt;/span&gt;)
+    parser.add_argument(&lt;span class="string"&gt;'--with-candles'&lt;/span&gt;, action=&lt;span class="string"&gt;'store_true'&lt;/span&gt;)
+
+    args = parser.parse_args()
+    run(**vars(args)) &lt;span class="comment"&gt;# Here it is.&lt;/span&gt;
+
+&lt;span class="keyword"&gt;def&lt;/span&gt; run(N:&lt;span class="type"&gt;int&lt;/span&gt;, pid:&lt;span class="type"&gt;int&lt;/span&gt;, with_candles:&lt;span class="type"&gt;bool&lt;/span&gt;=&lt;span class="None"&gt;False&lt;/span&gt;) -&amp;gt; &lt;span class="None"&gt;None&lt;/span&gt;:
+    ...
+
+&lt;span class="control"&gt;if&lt;/span&gt; __name__ == &lt;span class="string"&gt;'__main__'&lt;/span&gt;:
+    main()
+&lt;/pre&gt;
+&lt;p&gt;
+Relatively simple pattern, but I've found it to be useful. I'm sure there are
+argument parsing libraries that do nicer things, but with this pattern you can
+stick to the standard library which lessens the dependency problem.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;/article&gt;
+
+&lt;div&gt;
+&lt;h2 id="copyright"&gt;Copyright&lt;/h2&gt;
+&lt;p&gt;
+All code in this article is released into the public domain.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</description><pubDate>Wed, 27 Jul 2022 23:29:53 GMT</pubDate><link>https://www.davidpriver.com/runvarsargs.html</link><author>david@davidpriver.com</author></item></channel>
 </rss>

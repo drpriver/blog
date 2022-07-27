@@ -8,28 +8,17 @@ include $(wildcard Depends/build/*.dep)
 docs/%.html: build/%.html | build docs
 	cp $< $@
 
-PAGES:= docs/ctemplates.html \
-	docs/index.html \
+# included makefiles will append to this
+PAGES=docs/index.html
 
 # ctemplates post
+include ctemplates/ctemplates.mak
 
-build/ctemplates: ; mkdir -p $@
-
-build/ctemplates/%.c.html: ctemplates/%.c | build/ctemplates
-	python3 -m cdoc $< -o $@
-build/ctemplates/%.h.html: ctemplates/%.h | build/ctemplates
-	python3 -m cdoc $< -o $@
-build/ctemplates/darray.h.html: ctemplates/darray.h | build/ctemplates
-	python3 -m cdoc $< -o $@ --cflags -DDARRAY_T=int
-build/ctemplates.html: ctemplates/ctemplates.dnd | build Depends/build
-	dndc $< -o $@ -d Depends/$@ -C build/ctemplates
-build/ctemplates.html: \
-	build/ctemplates/cgm.c.html \
-	build/ctemplates/darray.h.html \
-	build/ctemplates/example.c.html
+# run(**vars(args)) post
+include runvarsargs/runvarsargs.mak
 
 # index
-build/index.html: index.dnd
+build/index.html: index.dnd | Depends/build build
 	dndc $< -o $@ -d Depends/$@
 
 # rss
@@ -40,7 +29,7 @@ docs/feed.xml: feed.xml | docs
 	cp $< $@
 
 .PHONY: all
-all: docs/feed.xml $(PAGES)
+all: $(PAGES)
 
 
 .PHONY: clean

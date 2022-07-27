@@ -4,9 +4,11 @@ Welcome to my blog!
 
 Feel free to check out one of the following articles:
 
+- [<tt>run(**vars(args))</tt> | runvarsargs]
 - [Templates in C | ctemplates]
 
 ::links
+  runvarsargs = runvarsargs.html
   ctemplates = ctemplates.html
 ::css
   body {
