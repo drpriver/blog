@@ -65,7 +65,7 @@ run(**vars(args))::md
   <i>David Priver, July 27th, 2022</i>
 
   Python has the pretty decent argument parsing module <tt>[argparse]</tt> as part
-  of the standard library. It offers a procedural API to building up a parser
+  of the standard library. It offers a procedural API for building up a parser
   for a program's command line arguments. After calling <tt>parse_args</tt>, you
   get back a simple namespace object that contains the values as defined by your
   parser (which I'll refer to as <tt>args</tt>.)
@@ -86,13 +86,13 @@ run(**vars(args))::md
     if __name__ == '__main__':
         main()
   There's just one problem: the only way to tell what is in this returned
-  <tt>args</tt> is by reading the code building up the parser.
+  <tt>args</tt> is by reading the code that builds up the parser.
 
   What I've found to be an effective way to help with that problem is to
   immediately grab the attributes off of the <tt>args</tt> and pass them to a
   function that actually does the work (normally named <tt>run</tt>). You want
   to spend as little time as possible with this dynamic, unstructured
-  <tt>args</tt> as possible.
+  <tt>args</tt>.
 
   ::pre .python
     # some_script.py

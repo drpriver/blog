@@ -561,7 +561,7 @@ h1, #runvarsargs {
 &lt;/p&gt;
 &lt;p&gt;
 Python has the pretty decent argument parsing module &lt;tt&gt;&lt;a href="https://docs.python.org/3/library/argparse.html"&gt;argparse&lt;/a&gt;&lt;/tt&gt; as part
-of the standard library. It offers a procedural API to building up a parser
+of the standard library. It offers a procedural API for building up a parser
 for a program's command line arguments. After calling &lt;tt&gt;parse_args&lt;/tt&gt;, you
 get back a simple namespace object that contains the values as defined by your
 parser (which I'll refer to as &lt;tt&gt;args&lt;/tt&gt;.)
@@ -584,14 +584,14 @@ parser (which I'll refer to as &lt;tt&gt;args&lt;/tt&gt;.)
 &lt;/pre&gt;
 &lt;p&gt;
 There's just one problem: the only way to tell what is in this returned
-&lt;tt&gt;args&lt;/tt&gt; is by reading the code building up the parser.
+&lt;tt&gt;args&lt;/tt&gt; is by reading the code that builds up the parser.
 &lt;/p&gt;
 &lt;p&gt;
 What I've found to be an effective way to help with that problem is to
 immediately grab the attributes off of the &lt;tt&gt;args&lt;/tt&gt; and pass them to a
 function that actually does the work (normally named &lt;tt&gt;run&lt;/tt&gt;). You want
 to spend as little time as possible with this dynamic, unstructured
-&lt;tt&gt;args&lt;/tt&gt; as possible.
+&lt;tt&gt;args&lt;/tt&gt;.
 &lt;/p&gt;
 &lt;pre class="python"&gt;
 &lt;span class="comment"&gt;# some_script.py&lt;/span&gt;
