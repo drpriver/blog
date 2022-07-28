@@ -96,7 +96,7 @@ pre .preproc {
 &lt;/ul&gt;
 &lt;/nav&gt;&lt;h1 id="templates-in-c"&gt;Templates in C&lt;/h1&gt;
 &lt;p&gt;
-&lt;i&gt;David Priver, July 22nd, 2022&lt;/i&gt;
+&lt;i&gt;&lt;a href="mailto:david@davidpriver.com"&gt;David Priver&lt;/a&gt;, July 22nd, 2022&lt;/i&gt;
 &lt;/p&gt;
 &lt;article&gt;
 
@@ -557,7 +557,7 @@ h1, #runvarsargs {
 &lt;div&gt;
 &lt;h2 id="runvarsargs"&gt;run(**vars(args))&lt;/h2&gt;
 &lt;p&gt;
-&lt;i&gt;David Priver, July 27th, 2022&lt;/i&gt;
+&lt;i&gt;&lt;a href="mailto:david@davidpriver.com"&gt;David Priver&lt;/a&gt;, July 27th, 2022&lt;/i&gt;
 &lt;/p&gt;
 &lt;p&gt;
 Python has the pretty decent argument parsing module &lt;tt&gt;&lt;a href="https://docs.python.org/3/library/argparse.html"&gt;argparse&lt;/a&gt;&lt;/tt&gt; as part

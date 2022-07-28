@@ -56,7 +56,7 @@
 [Home | home]
 ::toc
 Templates in C::title
-<i>David Priver, July 22nd, 2022</i>
+<i>[David Priver], July 22nd, 2022</i>
 
 ::raw
   <article>
@@ -232,4 +232,5 @@ Copyright::md
 
 ::links
   home = https://www.davidpriver.com
+  David Priver = mailto:david@davidpriver.com
   

@@ -62,7 +62,7 @@ run(**vars(args))::title #noid #hide
 ::raw
   <article>
 run(**vars(args))::md
-  <i>David Priver, July 27th, 2022</i>
+  <i>[David Priver], July 27th, 2022</i>
 
   Python has the pretty decent argument parsing module <tt>[argparse]</tt> as part
   of the standard library. It offers a procedural API for building up a parser
@@ -168,6 +168,7 @@ Copyright::md
   vars = https://docs.python.org/3/library/functions.html#vars
   argparse = https://docs.python.org/3/library/argparse.html
   home = https://www.davidpriver.com
+  David Priver = mailto:david@davidpriver.com
 
 ::import
   highlight-python.dnd
