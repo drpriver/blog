@@ -206,6 +206,7 @@ you generate the function via a macro.
     &lt;span class="keyword"&gt;return&lt;/span&gt; &lt;span class="literal"&gt;0&lt;/span&gt;;
 }
 &lt;/pre&gt;
+
 &lt;p&gt;
 This is type safe and you get the benefits of functions (separating
 implementation details from usage, local variables, early returns, etc.),
@@ -312,8 +313,8 @@ The easiest way to explain this is via an example:
 &lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; &lt;span class="macro" id="macro-darray-linkage"&gt;DARRAY_LINKAGE&lt;/span&gt; &lt;span class="keyword"&gt;static&lt;/span&gt; &lt;span class="keyword"&gt;inline&lt;/span&gt;
 &lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;endif&lt;/span&gt;
 
-&lt;span class="keyword"&gt;typedef&lt;/span&gt; &lt;span class="type"&gt;struct&lt;/span&gt; &lt;span class="type"&gt;DARRAY_NAME&lt;/span&gt; &lt;span class="type"&gt;DARRAY_NAME&lt;/span&gt;;
-&lt;span class="type"&gt;struct&lt;/span&gt; &lt;span class="type"&gt;DARRAY_NAME&lt;/span&gt; {
+&lt;span class="keyword"&gt;typedef&lt;/span&gt; &lt;span class="keyword"&gt;struct&lt;/span&gt; &lt;span class="type"&gt;DARRAY_NAME&lt;/span&gt; &lt;span class="type"&gt;DARRAY_NAME&lt;/span&gt;;
+&lt;span class="keyword"&gt;struct&lt;/span&gt; &lt;span class="type"&gt;DARRAY_NAME&lt;/span&gt; {
     &lt;span class="type"&gt;DARRAY_T&lt;/span&gt;* items;
     &lt;span class="type"&gt;size_t&lt;/span&gt; count;
     &lt;span class="type"&gt;size_t&lt;/span&gt; capacity;
@@ -675,5 +676,320 @@ All code in this article is released into the public domain.
 &lt;/div&gt;
 &lt;/body&gt;
 &lt;/html&gt;
-</description><pubDate>Wed, 27 Jul 2022 23:29:53 GMT</pubDate><link>https://www.davidpriver.com/runvarsargs.html</link><author>david@davidpriver.com</author></item></channel>
+</description><pubDate>Wed, 27 Jul 2022 23:29:53 GMT</pubDate><link>https://www.davidpriver.com/runvarsargs.html</link><author>david@davidpriver.com</author></item><item><title>_Generic for Type Reification in C</title><description>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+&lt;meta charset="UTF-8"&gt;
+&lt;meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"&gt;
+&lt;title&gt;_Generic for Type Reification in C&lt;/title&gt;
+&lt;style&gt;
+body {
+  max-width: 44em;
+  margin: auto;
+  margin-bottom: 40em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 12px;
+  background-color: #fff;
+  color: #000;
+}
+dt {
+  font-weight: bold;
+}
+pre {
+  padding-left: 2em;
+  padding-right: 1em;
+  padding-top: 1ex;
+  padding-bottom: 1ex;
+  background-color: #fdf6e3;
+  border-radius: 16px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  overflow-x: auto;
+  line-height: 125%;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+tt {
+  background-color: #eee;
+  padding: 2px;
+}
+pre .enum {
+  font-weight: bold;
+}
+pre .keyword {
+  color: #049407;
+}
+pre .comment {
+  color: #000;
+  font-style: italic;
+}
+pre .literal {
+  color: #2aa198;
+}
+pre .type {
+  color: #de6e00;
+}
+pre .macro {
+  color: #66a;
+}
+pre .func {
+  color: #213dde;
+}
+pre .preproc {
+  color: #777;
+}
+.uses h3 {
+  font-weight: initial;
+  font-style: italic;
+  margin-bottom: 0;
+}
+.uses p {
+  margin-left: 2em;
+  margin-top: 0;
+}
+/*endcss*/
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;p&gt;
+&lt;a href="https://www.davidpriver.com"&gt;Home&lt;/a&gt;
+&lt;/p&gt;
+&lt;nav&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href="#generic"&gt;_Generic&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#generic-for-tagging"&gt;_Generic for Tagging&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#use-cases"&gt;Use Cases&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#conclusion"&gt;Conclusion&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#appendix-other-languages"&gt;Appendix: Other Languages&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#copyright"&gt;Copyright&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/nav&gt;&lt;h1 id="generic-for-type-reification-in-c"&gt;_Generic for Type Reification in C&lt;/h1&gt;
+&lt;p&gt;
+&lt;i&gt;&lt;a href="mailto:david@davidpriver.com"&gt;David Priver&lt;/a&gt;, July 29th, 2022&lt;/i&gt;
+&lt;/p&gt;
+&lt;article&gt;
+
+&lt;p&gt;
+Occasionally, you need to turn a type into a value. An example of when you would
+need to do this is when constructing a tagged union that can hold pointers to
+different types:
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="comment"&gt;// anypointer.h&lt;/span&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;include&lt;/span&gt; &lt;span class="literal"&gt;&amp;lt;stdio.h&amp;gt;&lt;/span&gt;
+
+&lt;span class="comment"&gt;// prefixes and other types elided for brevity&lt;/span&gt;
+&lt;span class="keyword"&gt;enum&lt;/span&gt; &lt;span class="type" id="type-anypointertag"&gt;AnyPointerTag&lt;/span&gt; {
+    &lt;span class="enum" id="enum-uninit"&gt;UNINIT&lt;/span&gt;,
+    &lt;span class="enum" id="enum-int"&gt;INT&lt;/span&gt;,
+    &lt;span class="enum" id="enum-char-star"&gt;CHAR_STAR&lt;/span&gt;,
+    &lt;span class="enum" id="enum-double"&gt;DOUBLE&lt;/span&gt;,
+};
+&lt;span class="keyword"&gt;typedef&lt;/span&gt; &lt;span class="keyword"&gt;struct&lt;/span&gt; &lt;span class="type" id="type-anypointer"&gt;AnyPointer&lt;/span&gt; &lt;span class="type" id="type-anypointer"&gt;AnyPointer&lt;/span&gt;;
+&lt;span class="keyword"&gt;struct&lt;/span&gt; &lt;span class="type"&gt;AnyPointer&lt;/span&gt; {
+    &lt;span class="keyword"&gt;enum&lt;/span&gt; &lt;span class="type"&gt;AnyPointerTag&lt;/span&gt; tag;
+    &lt;span class="keyword"&gt;union&lt;/span&gt; {
+        &lt;span class="type"&gt;void&lt;/span&gt;* pointer;
+        &lt;span class="type"&gt;int&lt;/span&gt;* integer;
+        &lt;span class="type"&gt;char&lt;/span&gt;** charstar;
+        &lt;span class="type"&gt;double&lt;/span&gt;* double_;
+    };
+};
+
+&lt;span class="type"&gt;void&lt;/span&gt;
+&lt;span class="func" id="func-print-any"&gt;print_any&lt;/span&gt;(&lt;span class="type"&gt;AnyPointer&lt;/span&gt; any){
+    &lt;span class="keyword"&gt;switch&lt;/span&gt;(any.tag){
+        &lt;span class="keyword"&gt;case&lt;/span&gt; &lt;span class="enum"&gt;UNINIT&lt;/span&gt;: &lt;span class="keyword"&gt;return&lt;/span&gt;;
+        &lt;span class="keyword"&gt;case&lt;/span&gt; &lt;span class="enum"&gt;INT&lt;/span&gt;:
+            &lt;span class="func"&gt;printf&lt;/span&gt;(&lt;span class="literal"&gt;"%d\n"&lt;/span&gt;, *any.integer);
+            &lt;span class="keyword"&gt;return&lt;/span&gt;;
+        &lt;span class="keyword"&gt;case&lt;/span&gt; &lt;span class="enum"&gt;CHAR_STAR&lt;/span&gt;:
+            &lt;span class="func"&gt;printf&lt;/span&gt;(&lt;span class="literal"&gt;"%s\n"&lt;/span&gt;, *any.charstar);
+            &lt;span class="keyword"&gt;return&lt;/span&gt;;
+        &lt;span class="keyword"&gt;case&lt;/span&gt; &lt;span class="enum"&gt;DOUBLE&lt;/span&gt;:
+            &lt;span class="func"&gt;printf&lt;/span&gt;(&lt;span class="literal"&gt;"%f\n"&lt;/span&gt;, *any.double_);
+            &lt;span class="keyword"&gt;return&lt;/span&gt;;
+        &lt;span class="keyword"&gt;default&lt;/span&gt;: &lt;span class="keyword"&gt;return&lt;/span&gt;;
+    }
+}
+&lt;/pre&gt;
+&lt;pre&gt;
+&lt;span class="comment"&gt;// example.c&lt;/span&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;include&lt;/span&gt; &lt;span class="literal"&gt;"anypointer.h"&lt;/span&gt;
+
+&lt;span class="type"&gt;int&lt;/span&gt; &lt;span class="func" id="func-main"&gt;main&lt;/span&gt;(&lt;span class="type"&gt;void&lt;/span&gt;){
+    &lt;span class="type"&gt;int&lt;/span&gt; x = &lt;span class="literal"&gt;3&lt;/span&gt;;
+    &lt;span class="type"&gt;AnyPointer&lt;/span&gt; any = {.tag=&lt;span class="enum"&gt;INT&lt;/span&gt;, .integer=&amp;amp;x};
+    &lt;span class="func"&gt;print_any&lt;/span&gt;(any); &lt;span class="comment"&gt;// prints 3&lt;/span&gt;
+    &lt;span class="keyword"&gt;return&lt;/span&gt; &lt;span class="literal"&gt;0&lt;/span&gt;;
+}
+&lt;/pre&gt;
+&lt;p&gt;
+This example is small so it is not that difficult to manually set the tag when
+constructing the tagged union. However, setting the tag wrong would be
+disastrous, as you would be misinterpreting what is being pointed to.
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="comment"&gt;// problem.c&lt;/span&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;include&lt;/span&gt; &lt;span class="literal"&gt;"anypointer.h"&lt;/span&gt;
+
+&lt;span class="type"&gt;int&lt;/span&gt; &lt;span class="func" id="func-main"&gt;main&lt;/span&gt;(&lt;span class="type"&gt;void&lt;/span&gt;){
+    &lt;span class="type"&gt;int&lt;/span&gt; x = &lt;span class="literal"&gt;3&lt;/span&gt;;
+    &lt;span class="type"&gt;AnyPointer&lt;/span&gt; any = {.tag=&lt;span class="enum"&gt;CHAR_STAR&lt;/span&gt;, .integer=&amp;amp;x};
+    &lt;span class="func"&gt;print_any&lt;/span&gt;(any); &lt;span class="comment"&gt;// segfaults&lt;/span&gt;
+}
+&lt;/pre&gt;
+&lt;div&gt;
+&lt;h2 id="generic"&gt;_Generic&lt;/h2&gt;
+&lt;p&gt;
+C11 added the rarely used feature &lt;tt&gt;&lt;a href="https://en.cppreference.com/w/c/language/generic"&gt;_Generic&lt;/a&gt;&lt;/tt&gt;. It somewhat resembles a
+switch statement, but using types instead of integer constant expressions. Its
+motivating use case was to simulate overloading in C, but it can select
+arbitrary expressions, not just functions.
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="comment"&gt;// generic.c&lt;/span&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;include&lt;/span&gt; &lt;span class="literal"&gt;&amp;lt;stdio.h&amp;gt;&lt;/span&gt;
+
+&lt;span class="type"&gt;int&lt;/span&gt; &lt;span class="func" id="func-main"&gt;main&lt;/span&gt;(&lt;span class="type"&gt;void&lt;/span&gt;){
+    &lt;span class="comment"&gt;// prints: "int: 3"&lt;/span&gt;
+    &lt;span class="func"&gt;printf&lt;/span&gt;(
+        &lt;span class="keyword"&gt;_Generic&lt;/span&gt;(&lt;span class="literal"&gt;3&lt;/span&gt;,
+        &lt;span class="type"&gt;int&lt;/span&gt;: &lt;span class="literal"&gt;"int: %d\n"&lt;/span&gt;,
+        &lt;span class="type"&gt;float&lt;/span&gt;: &lt;span class="literal"&gt;"float: %f\n"&lt;/span&gt;), &lt;span class="literal"&gt;3&lt;/span&gt;);
+    &lt;span class="keyword"&gt;return&lt;/span&gt; &lt;span class="literal"&gt;0&lt;/span&gt;;
+}
+&lt;/pre&gt;
+&lt;p&gt;
+In common use, &lt;tt&gt;_Generic&lt;/tt&gt; is used in a macro.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="generic-for-tagging"&gt;_Generic for Tagging&lt;/h2&gt;
+&lt;p&gt;
+We can use the power of &lt;tt&gt;_Generic&lt;/tt&gt; to automatically select the
+appropriate type tag for our tagged union.
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="comment"&gt;// generic_tag.c&lt;/span&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;include&lt;/span&gt; &lt;span class="literal"&gt;"anypointer.h"&lt;/span&gt;
+
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; &lt;span class="macro" id="macro-tag"&gt;TAG&lt;/span&gt;(x) &lt;span class="keyword"&gt;_Generic&lt;/span&gt;(x, \
+    &lt;span class="type"&gt;int&lt;/span&gt;: &lt;span class="enum"&gt;INT&lt;/span&gt;, \
+    &lt;span class="type"&gt;char&lt;/span&gt;*: &lt;span class="enum"&gt;CHAR_STAR&lt;/span&gt;, \
+    &lt;span class="type"&gt;double&lt;/span&gt;: &lt;span class="enum"&gt;DOUBLE&lt;/span&gt;)
+
+&lt;span class="type"&gt;int&lt;/span&gt; &lt;span class="func" id="func-main"&gt;main&lt;/span&gt;(&lt;span class="type"&gt;void&lt;/span&gt;){
+    &lt;span class="type"&gt;int&lt;/span&gt; x = &lt;span class="literal"&gt;3&lt;/span&gt;;
+    &lt;span class="type" id="type-anypointer"&gt;AnyPointer&lt;/span&gt; any = {.tag=&lt;span class="macro"&gt;TAG&lt;/span&gt;(x), .pointer=&amp;amp;x};
+    &lt;span class="func"&gt;print_any&lt;/span&gt;(any); &lt;span class="comment"&gt;// prints 3&lt;/span&gt;
+    &lt;span class="keyword"&gt;return&lt;/span&gt; &lt;span class="literal"&gt;0&lt;/span&gt;;
+}
+&lt;/pre&gt;
+&lt;p&gt;
+Going even farther, we can completely automate the creation of our tagged
+union in a macro:
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="comment"&gt;// generic_compound.c&lt;/span&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;include&lt;/span&gt; &lt;span class="literal"&gt;"anypointer.h"&lt;/span&gt;
+
+&lt;span class="comment"&gt;// NOTE: we now take a pointer instead of the value&lt;/span&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; &lt;span class="macro" id="macro-tag"&gt;TAG&lt;/span&gt;(x) &lt;span class="keyword"&gt;_Generic&lt;/span&gt;(x, \
+    &lt;span class="type"&gt;int&lt;/span&gt;*: &lt;span class="enum"&gt;INT&lt;/span&gt;, \
+    &lt;span class="type"&gt;char&lt;/span&gt;**: &lt;span class="enum"&gt;CHAR_STAR&lt;/span&gt;, \
+    &lt;span class="type"&gt;double&lt;/span&gt;*: &lt;span class="enum"&gt;DOUBLE&lt;/span&gt;)
+
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; &lt;span class="macro" id="macro-any"&gt;ANY&lt;/span&gt;(x) (&lt;span class="type"&gt;AnyPointer&lt;/span&gt;){.tag=&lt;span class="macro"&gt;TAG&lt;/span&gt;(x), .pointer=x}
+
+&lt;span class="type"&gt;int&lt;/span&gt; &lt;span class="func" id="func-main"&gt;main&lt;/span&gt;(&lt;span class="type"&gt;void&lt;/span&gt;){
+    &lt;span class="type"&gt;int&lt;/span&gt; x = &lt;span class="literal"&gt;3&lt;/span&gt;;
+    &lt;span class="type"&gt;AnyPointer&lt;/span&gt; any = &lt;span class="macro"&gt;ANY&lt;/span&gt;(&amp;amp;x);
+    &lt;span class="func"&gt;print_any&lt;/span&gt;(any); &lt;span class="comment"&gt;// prints 3&lt;/span&gt;
+    &lt;span class="keyword"&gt;return&lt;/span&gt; &lt;span class="literal"&gt;0&lt;/span&gt;;
+}
+&lt;/pre&gt;
+&lt;p&gt;
+Now, we can safely and concisely construct our tagged union without the risk
+of accidentally setting the wrong tag. Additionally, if we try to wrap a value of
+an unsupported type, we'll get a compilation error as the &lt;tt&gt;_Generic&lt;/tt&gt; will
+fail to match any of its known types.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="use-cases"&gt;Use Cases&lt;/h2&gt;
+&lt;p&gt;
+In practice, you don't use this technique very often. C code doesn't usually
+need to use this level of indirection and using too many macros like this can
+make the code obfuscated. However, there are times when a little "magic" like
+this is justified in my opinion.
+&lt;/p&gt;
+&lt;div class="uses"&gt;
+&lt;h3&gt;Argument parsing libraries&lt;/h3&gt;
+&lt;p&gt;
+You can use a type-reifying macro in essentially the same way as in the
+above examples. When parsing arguments, you would switch on the type tag to
+determine what type conversion function to call or action to take.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="uses"&gt;
+&lt;h3&gt;Serialization code&lt;/h3&gt;
+&lt;p&gt;
+You can use a type-reifying macro like this, along with &lt;tt&gt;sizeof&lt;/tt&gt; and
+&lt;tt&gt;&lt;a href="https://en.cppreference.com/w/c/types/offsetof"&gt;offsetof&lt;/a&gt;&lt;/tt&gt; to create a descriptor for a data type. The
+serializer/deserializer could then use that descriptor to parse binary data
+or something like JSON.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="uses"&gt;
+&lt;h3&gt;Dynamic "objects"&lt;/h3&gt;
+&lt;p&gt;
+Instead of a type tag, you could have a pointer to a vtable. This would
+allow you to convert staticly typed objects to an interface.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;p&gt;
+It's a useful technique to have in your toolbox. Don't overuse it.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="conclusion"&gt;Conclusion&lt;/h2&gt;
+&lt;p&gt;
+C11 added the means to reify types, a capability lacking from the C
+programming language before then. Using the &lt;tt&gt;_Generic&lt;/tt&gt; construct, we can
+bridge one of the gaps between compile time information (types) and runtime
+information (type tags). Doing so allows you to implement things like an
+&lt;tt&gt;Any&lt;/tt&gt; type, introspecting values for data processing and other use
+cases. Opportunities to use this technique are not too frequent, but when you do
+need it the technique can save error-prone manual boilerplate.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="appendix-other-languages"&gt;Appendix: Other Languages&lt;/h2&gt;
+&lt;p&gt;
+In C++, you can achieve the same effect by writing a collection of trivial
+&lt;tt&gt;constexpr&lt;/tt&gt; overloaded functions that return the type tag. This is more
+verbose, but can yield the same result.
+&lt;/p&gt;
+&lt;p&gt;
+If you are using GCC, but for some reason can't use C11 features, you can use
+&lt;tt&gt;__builtin_types_compatible_p&lt;/tt&gt;.
+&lt;/p&gt;
+&lt;p&gt;
+In languages with first class types, you can just store the pointer to the
+type instead.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;/article&gt;
+
+&lt;div&gt;
+&lt;h2 id="copyright"&gt;Copyright&lt;/h2&gt;
+&lt;p&gt;
+All code in this article is released into the public domain.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</description><pubDate>Fri, 29 Jul 2022 15:33:52 GMT</pubDate><link>https://www.davidpriver.com/creification.html</link><author>david@davidpriver.com</author></item></channel>
 </rss>
