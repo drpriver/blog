@@ -1,0 +1,161 @@
+::css
+  body {
+    max-width: 44em;
+    margin: auto;
+    margin-bottom: 40em;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    padding: 12px;
+    background-color: #fff;
+    color: #000;
+  }
+  dt {
+    font-weight: bold;
+  }
+  pre {
+    padding-left: 2em;
+    padding-right: 1em;
+    padding-top: 1ex;
+    padding-bottom: 1ex;
+    background-color: #fdf6e3;
+    border-radius: 16px;
+    font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+    font-size: 1rem;
+    overflow-x: auto;
+    line-height: 125%;
+  }
+  a {
+    color: rgb(0, 0, 238);
+  }
+  tt {
+    background-color: #eee;
+    padding: 2px;
+  }
+  pre .enum {
+    font-weight: bold;
+  }
+  pre .keyword {
+    color: #049407;
+  }
+  pre .comment {
+    color: #000;
+    font-style: italic;
+  }
+  pre .literal {
+    color: #2aa198;
+  }
+  pre .type {
+    color: #de6e00;
+  }
+  pre .macro {
+    color: #66a;
+  }
+  pre .func {
+    color: #213dde;
+  }
+  pre .preproc {
+    color: #777;
+  }
+  .uses h3 {
+    font-weight: initial;
+    font-style: italic;
+    margin-bottom: 0;
+  }
+  .uses p {
+    margin-left: 2em;
+    margin-top: 0;
+  }
+  /*endcss*/
+[Home | home]
+
+::js
+  let wrapped = ctx.select_nodes({attributes:['wrapped']});
+  for(let w of wrapped){
+    w.insert_child(0, '<pre>');
+    w.add_child('</pre>');
+  }
+  //endjs
+::toc
+_Generic for Type Reification in C::title
+<i>[David Priver], July 22nd, 2022</i>
+
+::raw
+  <article>
+
+Occasionally, you need to turn a type into a value. An example of when you would
+need to do this is when constructing a tagged union that can hold pointers to
+different types:
+
+::raw @wrapped #import
+  anypointer.h.html
+::raw @wrapped #import
+  intro.c.html
+This example is small so it is not that difficult to manually set the tag when
+constructing the tagged union. However, setting the tag wrong would be
+disastrous, as you would be misinterpreting what is being pointed to.
+
+::raw @wrapped #import
+  problem.c.html
+_Generic::md
+  C11 added the rarely used feature <tt>[_Generic]</tt>. It somewhat resembles a
+  switch statement, but using types instead of integer constant expressions. Its
+  motivating use case was to simulate overloading in C, but it can select
+  arbitrary expressions, not just functions.
+
+  ::raw @wrapped #import
+    generic.c.html
+  In common use, <tt>_Generic</tt> is used in a macro.
+
+_Generic for Tagging::md
+  We can use the power of <tt>_Generic</tt> to automatically select the
+  appropriate type tag for our tagged union.
+
+  ::raw @wrapped #import
+    generictag.c.html
+  Going even farther, we can completely automate the creation of our tagged
+  union in a macro:
+
+  ::raw @wrapped #import
+    genericliteral.c.html
+Use Cases::md
+  In practice, you don't use this technique very often. C code doesn't usually
+  need to use this level of indirection and using too many macros like this can
+  make the code obfuscated. However, there are times when a little "magic" like
+  this is justified in my opinion.
+
+  Argument parsing libraries::md .uses #noid
+    You can use a type-reifying macro in essentially the same way as in the
+    above examples. When parsing arguments, you would switch on the type tag to
+    determine what type conversion function to call or action to take.
+
+  Serialization code::md .uses #noid
+    You can use a type-reifying macro like this, along with <tt>sizeof</tt> and
+    <tt>[offsetof]</tt> to create a descriptor for a data type. The
+    serializer/deserializer could then use that descriptor to parse binary data
+    or something like JSON.
+
+  Dynamic "objects"::md .uses #noid
+    Instead of a type tag, you could have a pointer to a vtable. This would
+    allow you to convert staticly typed objects to an interface.
+
+  It's a useful technique to have in your toolbox. Don't overuse it.
+
+Other Languages::md
+  In C++, you can achieve the same effect by writing a collection of trivial
+  <tt>constexpr</tt> overloaded functions that return the type tag. This is more
+  verbose, but can yield the same result.
+
+  If you are using GCC, but for some reason can't use C11 features, you can use
+  <tt>__builtin_types_compatible_p</tt>.
+
+::raw
+  </article>
+
+Copyright::md
+  All code in this article is released into the public domain.
+
+::links
+  home = https://www.davidpriver.com
+  David Priver = mailto:david@davidpriver.com
+  _Generic = https://en.cppreference.com/w/c/language/generic
+  offsetof = https://en.cppreference.com/w/c/types/offsetof
+

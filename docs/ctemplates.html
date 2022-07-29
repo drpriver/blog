@@ -198,6 +198,7 @@ you generate the function via a macro.
     <span class="keyword">return</span> <span class="literal">0</span>;
 }
 </pre>
+
 <p>
 This is type safe and you get the benefits of functions (separating
 implementation details from usage, local variables, early returns, etc.),
@@ -304,8 +305,8 @@ The easiest way to explain this is via an example:
 <span class="preproc">#</span><span class="preproc">define</span> <span class="macro" id="macro-darray-linkage">DARRAY_LINKAGE</span> <span class="keyword">static</span> <span class="keyword">inline</span>
 <span class="preproc">#</span><span class="preproc">endif</span>
 
-<span class="keyword">typedef</span> <span class="type">struct</span> <span class="type">DARRAY_NAME</span> <span class="type">DARRAY_NAME</span>;
-<span class="type">struct</span> <span class="type">DARRAY_NAME</span> {
+<span class="keyword">typedef</span> <span class="keyword">struct</span> <span class="type">DARRAY_NAME</span> <span class="type">DARRAY_NAME</span>;
+<span class="keyword">struct</span> <span class="type">DARRAY_NAME</span> {
     <span class="type">DARRAY_T</span>* items;
     <span class="type">size_t</span> count;
     <span class="type">size_t</span> capacity;
