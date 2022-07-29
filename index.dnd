@@ -4,6 +4,7 @@ Welcome to my blog!
 
 Feel free to check out one of the following articles:
 
+- [Doctests in C | cdoctests]
 - [<tt>_Generic</tt> for Type Reification in C | creification]
 - [<tt>run(**vars(args))</tt> in Python | runvarsargs]
 - [Templates in C | ctemplates]
@@ -12,6 +13,7 @@ Feel free to check out one of the following articles:
   creification = creification.html
   runvarsargs = runvarsargs.html
   ctemplates = ctemplates.html
+  cdoctests = cdoctest.html
 ::css
   body {
     max-width: 44em;
