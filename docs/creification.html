@@ -82,12 +82,13 @@ pre .preproc {
 <li><a href="#generic">_Generic</a></li>
 <li><a href="#generic-for-tagging">_Generic for Tagging</a></li>
 <li><a href="#use-cases">Use Cases</a></li>
-<li><a href="#other-languages">Other Languages</a></li>
+<li><a href="#conclusion">Conclusion</a></li>
+<li><a href="#appendix-other-languages">Appendix: Other Languages</a></li>
 <li><a href="#copyright">Copyright</a></li>
 </ul>
 </nav><h1 id="generic-for-type-reification-in-c">_Generic for Type Reification in C</h1>
 <p>
-<i><a href="mailto:david@davidpriver.com">David Priver</a>, July 22nd, 2022</i>
+<i><a href="mailto:david@davidpriver.com">David Priver</a>, July 29th, 2022</i>
 </p>
 <article>
 
@@ -231,6 +232,12 @@ union in a macro:
     <span class="keyword">return</span> <span class="literal">0</span>;
 }
 </pre>
+<p>
+Now, we can safely and concisely construct our tagged union without the risk
+of accidentally setting the wrong tag. Additionally, if we try to wrap a value of
+an unsupported type, we'll get a compilation error as the <tt>_Generic</tt> will
+fail to match any of its known types.
+</p>
 </div>
 <div>
 <h2 id="use-cases">Use Cases</h2>
@@ -269,7 +276,19 @@ It's a useful technique to have in your toolbox. Don't overuse it.
 </p>
 </div>
 <div>
-<h2 id="other-languages">Other Languages</h2>
+<h2 id="conclusion">Conclusion</h2>
+<p>
+C11 added the means to reify types, a capability lacking from the C
+programming language before then. Using the <tt>_Generic</tt> construct, we can
+bridge one of the gaps between compile time information (types) and runtime
+information (type tags). Doing so allows you to implement things like an
+<tt>Any</tt> type, introspecting values for data processing and other use
+cases. Opportunities to use this technique are not too frequent, but when you do
+need it the technique can save error-prone manual boilerplate.
+</p>
+</div>
+<div>
+<h2 id="appendix-other-languages">Appendix: Other Languages</h2>
 <p>
 In C++, you can achieve the same effect by writing a collection of trivial
 <tt>constexpr</tt> overloaded functions that return the type tag. This is more
@@ -278,6 +297,10 @@ verbose, but can yield the same result.
 <p>
 If you are using GCC, but for some reason can't use C11 features, you can use
 <tt>__builtin_types_compatible_p</tt>.
+</p>
+<p>
+In languages with first class types, you can just store the pointer to the
+type instead.
 </p>
 </div>
 </article>

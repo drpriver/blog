@@ -76,7 +76,7 @@
   //endjs
 ::toc
 _Generic for Type Reification in C::title
-<i>[David Priver], July 22nd, 2022</i>
+<i>[David Priver], July 29th, 2022</i>
 
 ::raw
   <article>
@@ -116,6 +116,11 @@ _Generic for Tagging::md
 
   ::raw @wrapped #import
     genericliteral.c.html
+
+  Now, we can safely and concisely construct our tagged union without the risk
+  of accidentally setting the wrong tag. Additionally, if we try to wrap a value of
+  an unsupported type, we'll get a compilation error as the <tt>_Generic</tt> will
+  fail to match any of its known types.
 Use Cases::md
   In practice, you don't use this technique very often. C code doesn't usually
   need to use this level of indirection and using too many macros like this can
@@ -139,13 +144,25 @@ Use Cases::md
 
   It's a useful technique to have in your toolbox. Don't overuse it.
 
-Other Languages::md
+Conclusion::md
+  C11 added the means to reify types, a capability lacking from the C
+  programming language before then. Using the <tt>_Generic</tt> construct, we can
+  bridge one of the gaps between compile time information (types) and runtime
+  information (type tags). Doing so allows you to implement things like an
+  <tt>Any</tt> type, introspecting values for data processing and other use
+  cases. Opportunities to use this technique are not too frequent, but when you do
+  need it the technique can save error-prone manual boilerplate.
+
+Appendix: Other Languages::md
   In C++, you can achieve the same effect by writing a collection of trivial
   <tt>constexpr</tt> overloaded functions that return the type tag. This is more
   verbose, but can yield the same result.
 
   If you are using GCC, but for some reason can't use C11 features, you can use
   <tt>__builtin_types_compatible_p</tt>.
+
+  In languages with first class types, you can just store the pointer to the
+  type instead.
 
 ::raw
   </article>
