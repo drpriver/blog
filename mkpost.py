@@ -38,6 +38,14 @@ def run(name:str, lang:Langs) -> None:
             plaintemplate(name)
     with open('Makefile', 'a') as fp:
         print(f'\ninclude {name}/{name}.mak', file=fp)
+    try:
+        with open('.vimrc', 'r') as fp:
+            vimrc = fp.read().strip()
+    except IOError:
+        vimrc = 'setpath=.,'
+    with open('.vimrc', 'w') as fp:
+        print(vimrc+','+name, file=fp)
+
 
 def ctemplate(name:str) -> None:
     mkfile = f'''build/{name}: ; mkdir -p $@
