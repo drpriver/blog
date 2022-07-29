@@ -4,10 +4,12 @@ Welcome to my blog!
 
 Feel free to check out one of the following articles:
 
-- [<tt>run(**vars(args))</tt> | runvarsargs]
+- [<tt>_Generic</tt> for Type Reification in C | creification]
+- [<tt>run(**vars(args))</tt> in Python | runvarsargs]
 - [Templates in C | ctemplates]
 
 ::links
+  creification = creification.html
   runvarsargs = runvarsargs.html
   ctemplates = ctemplates.html
 ::css
