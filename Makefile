@@ -11,12 +11,6 @@ docs/%.html: build/%.html | build docs
 # included makefiles will append to this
 PAGES=docs/index.html
 
-# ctemplates post
-include ctemplates/ctemplates.mak
-
-# run(**vars(args)) post
-include runvarsargs/runvarsargs.mak
-
 # index
 build/index.html: index.dnd | Depends/build build
 	dndc $< -o $@ -d Depends/$@
@@ -39,3 +33,9 @@ clean:
 	rm -rf docs
 
 .DEFAULT_GOAL:=all
+
+# ctemplates post
+include ctemplates/ctemplates.mak
+
+# run(**vars(args)) post
+include runvarsargs/runvarsargs.mak
