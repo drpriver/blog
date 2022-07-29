@@ -9,11 +9,14 @@ Feel free to check out one of the following articles:
 - [<tt>run(**vars(args))</tt> in Python | runvarsargs]
 - [Templates in C | ctemplates]
 
+[rss]
+
 ::links
   creification = creification.html
   runvarsargs = runvarsargs.html
   ctemplates = ctemplates.html
   cdoctests = cdoctest.html
+  rss = feed.xml
 ::css
   body {
     max-width: 44em;
