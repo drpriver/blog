@@ -3,6 +3,7 @@ import argparse
 import os
 import shutil
 from enum import Enum
+import datetime
 
 class Langs(str, Enum):
     C = 'C'
@@ -62,7 +63,33 @@ PAGES+=docs/{name}.html
     with open(f'{name}/{name}.mak', 'w') as fp:
         fp.write(mkfile)
     with open(f'{name}/{name}.dnd', 'w') as fp:
-        pass
+        def p(arg):
+            print(arg, file=fp)
+        p('::css #import')
+        p('  ../../c.css')
+        p('::js')
+        p("  let wrapped = ctx.select_nodes({attributes:['wrapped']});")
+        p('  for(let w of wrapped){')
+        p("    w.insert_child(0, '<pre>');")
+        p("    w.add_child('</pre>');")
+        p('  }')
+        p('  //endjs')
+        p(name+'::title')
+        today = datetime.date.today()
+        p(today.strftime('<i>[David Priver], %B %dth, %Y</i>'))
+        p('')
+        p('::raw')
+        p('  <article>')
+        p('')
+        p('')
+        p('::raw')
+        p('  </article>')
+        p('Copyright::md')
+        p('  All code in this article is released into the public domain.')
+        p('')
+        p('::links')
+        p('  home = https://www.davidpriver.com')
+        p('  David Priver = mailto:david@davidpriver.com')
 
 def pytemplate(name:str) -> None:
     mkfile=f'''build/{name}.html: {name}/{name}.dnd | build Depends/build
