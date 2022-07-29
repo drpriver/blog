@@ -127,16 +127,10 @@ Generics in C::md
 
     ::raw
       <pre>
-    ::raw .C @fixme #import
+    ::raw .C #import
       cgm.c.html
     ::raw
       </pre>
-    ::js
-      node = ctx.select_nodes({attributes:['fixme']})[0];
-      for(let i = 1; i < 6; i++){
-        node.children[i].header += ' \\';
-      }
-      //endjs
 
     This is type safe and you get the benefits of functions (separating
     implementation details from usage, local variables, early returns, etc.),

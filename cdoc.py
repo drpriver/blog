@@ -159,150 +159,13 @@ def same_path(a:str, b:str) -> bool:
     except:
         return False
 
-HEAD='''<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-<style>
-* {
-  box-sizing: border-box;
-}
-html {
-  height: 100%;
-  width: 100%;
-}
-body{
-  background-color: #272822 !important;
-  color: #D2D39A;
-}
-.h {
-  font-weight: bold;
-  color: #eee;
-}
-.param {
-  color: #73AA04;
-}
-.keyword {
-  color: #fafc8d;
-}
-.comment {
-  color: #5AC1E5;
-}
-.literal {
-  color: #ee5866;
-}
-.underline {
-  color: #888;
-}
-.type {
-  color: #87FFAF;
-}
-.func {
-  color: #FAC185;
-}
-.global {
-  color: #ccc;
-}
-.enum, .anonenum {
-  color: #FFC137;
-}
-.macro {
-  color: #c89ad2;
-}
-.preproc {
-  color: #a89ad2;
-}
-a {
-  color: #D2D39A;
-}
-@media (prefers-color-scheme: light) {
-body{
-  background-color: #fff !important;
-  color: #000;
-}
-.h {
-  color: #111;
-}
-.param {
-  color: #28d006;
-}
-.keyword {
-  color: #fa8f16;
-}
-.comment {
-  color: #338;
-}
-.literal {
-  color: #ee5866;
-}
-.underline {
-  color: #888;
-}
-.type {
-  color: #519a4e;
-}
-.func {
-  color: #e67600;
-}
-.global {
-  color: #ccc;
-}
-.enum, .anonenum {
-  color: #191816;
-}
-.macro {
-  color: #000;
-}
-.preproc {
-  color: #777;
-}
-a {
-  color: #D2D39A;
-}
-}
 
-body {
-  height: 100%;
-  width: 100%;
-  display: grid;
-  grid-template-columns: max-content auto;
-  grid-column-gap: 3em;
-  margin: 0;
-}
-a {
-  font-family: ui-monospace, "Cascadia Mono", Consolas, mono;
-}
-#toc {
-  overflow-y: auto;
-  height: 100%;
-  font-size: 12px;
-  padding-right: 2em;
-  padding-left: 1em;
-  padding-top: 1ex;
-}
-pre {
-  font-family: ui-monospace, "Cascadia Mono", Consolas, mono;
-  font-size: 14px;
-  overflow-y: auto;
-  height: 100%;
-  margin: 0;
-  padding-bottom: 80vh;
-  padding-top: 2ex;
-  padding-left: 2em;
-}
-a.type, a.macro, a.func, a.enum, a.anonenum, a.global, a.literal {
-  text-decoration: none;
-}
-a.type:hover, a.macro:hover, a.func:hover, a.enum:hover, a.anonenum:hover, a.global:hover, a.literal:hover {
-  text-decoration: underline;
-}
-</style>
-</head>
-<body>'''
+# NOTE: The DocWriter has to examine the end of all lines in the sourcefile as
+#       clang swallows the \ in multiline macros.
+#       Very annoying!
 class DocWriter:
     backticpat = re.compile(r'`(.+?)`')
-    def __init__(self, idents:Dict[str, Ident], sourcefile:str) -> None:
+    def __init__(self, idents:Dict[str, Ident], sourcefile:str, sourcetext:str) -> None:
         self.name_to_ident = idents
         self.idents = list(idents.values())
         self.lines: List = ['']
@@ -310,9 +173,13 @@ class DocWriter:
         self.sourcefile = sourcefile
         self.include = False
         self.include_buff = []
+        self.sourcelines = sourcetext.split('\n')
 
     def do_token(self, token:cindex.Token) -> None:
         if token.location.line != self.prev[0]:
+            sourceline = self.sourcelines[self.prev[0]-1]
+            if sourceline.rstrip().endswith('\\'):
+                self.lines[-1] += ' \\'
             self.include = False
             for _ in range(max(0, token.location.line-self.prev[0])):
                 self.lines.append('')
@@ -395,8 +262,8 @@ def do_tags(arguments:List[str], source_file:str, compiler:str) -> DocWriter:
         identifiers[s] = Ident(Kinds.func, s)
     def m(s:str) -> None:
         identifiers[s] = Ident(Kinds.macro, s)
-    for x in ['int', 'char', 'size_t', 'unsigned', 'void', 'ssize_t', 'long', 'short', 'enum',
-            'signed', 'struct', 'union', 'const', 'FILE', 'int8_t', 'uint8_t', 'int16_t', 'uint16_t', 'int32_t', 'uint32_t', 'int64_t', 'uint64_t', 'bool', '_Bool', 'float', 'double', 'ptrdiff_t', 'intptr_t', 'uintptr_t', 'T', 'DARRAY_T', 'DARRAY_NAME']:
+    for x in ['int', 'char', 'size_t', 'unsigned', 'void', 'ssize_t', 'long', 'short',
+            'signed',  'const', 'FILE', 'int8_t', 'uint8_t', 'int16_t', 'uint16_t', 'int32_t', 'uint32_t', 'int64_t', 'uint64_t', 'bool', '_Bool', 'float', 'double', 'ptrdiff_t', 'intptr_t', 'uintptr_t', 'T', 'DARRAY_T', 'DARRAY_NAME']:
         t(x)
     for x in ['printf', 'fprintf', 'memcpy', 'memset', 'memcmp', 'memchr', 'memmem', 'malloc', 'realloc', 'free', 'calloc']:
         f(x)
@@ -419,9 +286,11 @@ def do_tags(arguments:List[str], source_file:str, compiler:str) -> DocWriter:
 
     for c in tu.cursor.get_children():
         do_cursor(c, source_files, identifiers)
-    writer = DocWriter(identifiers, source_file)
+    with open(source_file) as fp:
+        text = fp.read()
+    writer = DocWriter(identifiers, source_file, text)
     prev = (1, 1)
-    for token in tu.get_tokens(locations=(cindex.SourceLocation.from_offset(tu, tu.get_file(source_file),0), cindex.SourceLocation.from_offset(tu, tu.get_file(source_file), len(open(source_file).read())))):
+    for token in tu.get_tokens(locations=(cindex.SourceLocation.from_offset(tu, tu.get_file(source_file),0), cindex.SourceLocation.from_offset(tu, tu.get_file(source_file), len(text)))):
         writer.do_token(token)
     return writer
 
