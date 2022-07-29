@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>Doctests in C</title>
+<style>
+body {
+  max-width: 44em;
+  margin: auto;
+  margin-bottom: 40em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 12px;
+  background-color: #fff;
+  color: #000;
+}
+dt {
+  font-weight: bold;
+}
+pre {
+  padding-left: 2em;
+  padding-right: 1em;
+  padding-top: 1ex;
+  padding-bottom: 1ex;
+  background-color: #fdf6e3;
+  border-radius: 16px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  overflow-x: auto;
+  line-height: 125%;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+tt {
+  background-color: #eee;
+  padding: 2px;
+}
+pre .enum {
+  font-weight: bold;
+}
+pre .keyword {
+  color: #049407;
+}
+pre .comment {
+  color: #000;
+  font-style: italic;
+}
+pre .literal {
+  color: #2aa198;
+}
+pre .type {
+  color: #de6e00;
+}
+pre .macro {
+  color: #66a;
+}
+pre .func {
+  color: #213dde;
+}
+pre .preproc {
+  color: #777;
+}
+.quoted {
+  margin-left: 2em;
+  border-left: 2px solid grey;
+  padding-left: 8px;
+}
+pre .h {
+  font-weight: bold;
+}
+pre .param {
+  color: #6a6;
+}
+/*endcss*/
+</style>
+</head>
+<body>
+<p>
+<a href="https://www.davidpriver.com">Home</a>
+</p>
+<nav>
+<ul>
+<li><a href="#copyright">Copyright</a></li>
+</ul>
+</nav><h1 id="doctests-in-c">Doctests in C</h1>
+<p>
+<i><a href="mailto:david@davidpriver.com">David Priver</a>, July 30th, 2022</i>
+</p>
+<article>
+
+<p>
+<a href="https://docs.python.org/3/library/doctest.html">Doctests</a> are a technique of testing the examples embedded in documentation.
+They were first created for the Python language in 1999, but have since spread
+to other languages like Rust.
+</p>
+<p>
+Embedding examples in documentation is very useful as it can immediately clarify
+usage of an API or the meaning of unclear terms. However, they can rot as the
+API changes, which can be worse than having nothing at all. What are we to do?
+</p>
+<p>
+Well, as usual in C when you have a problem that can't be solved directly in the
+language itself, you reach for the preprocessor (this usage isn't that crazy, I
+promise!). Just include the examples in the doc, but guard them with an
+<tt>#ifdef</tt>. You can then write a test program that <tt>#includes</tt> the
+documentation file, but with that macro defined so the examples are actual code.
+Then, run the tests!
+</p>
+<p>
+An example:
+</p>
+<pre>
+<span class="comment">// some_api.h</span>
+<span class="preproc">#</span><span class="preproc">include</span> <span class="literal">&lt;stddef.h&gt;</span> <span class="comment">// size_t</span>
+<span class="keyword">typedef</span> <span class="keyword">struct</span> <span class="type" id="type-someapicontext">SomeApiContext</span> <span class="type" id="type-someapicontext">SomeApiContext</span>;
+
+<span class="comment">// Visibility modifiers, dllexport, and some documentation</span>
+<span class="comment">// elided for brevity.</span>
+
+<span class="type">SomeApiContext</span>* <span class="func" id="func-some-api-create">some_api_create</span>(<span class="type">void</span>);
+<span class="comment">// ...</span>
+
+<span class="type">void</span> <span class="func" id="func-some-api-store-data">some_api_store_data</span>(<span class="type">SomeApiContext</span>*, <span class="type">int</span>*, <span class="type">size_t</span>);
+<span class="comment">// ...</span>
+
+<span class="type">size_t</span>
+<span class="func" id="func-some-api-get-data">some_api_get_data</span>(
+    <span class="type">SomeApiContext</span>* ctx,
+    <span class="type">int</span>* buff, <span class="type">size_t</span> bufflen,
+    <span class="type">size_t</span>* cookie);
+<span class="comment">// Copies the data into a user provided buffer.</span>
+<span class="comment">//</span>
+<span class="comment">//</span><span class="h"> Arguments:</span>
+<span class="comment">//</span><span class="underline"> ----------</span>
+<span class="comment">//</span><span class="param"> ctx:</span>
+<span class="comment">//      The api context</span>
+<span class="comment">//</span><span class="param"> buff:</span>
+<span class="comment">//      The buffer to copy the data into.</span>
+<span class="comment">//</span><span class="param"> bufflen:</span>
+<span class="comment">//      The length (in items, not bytes) of buff.</span>
+<span class="comment">//</span><span class="param"> cookie:</span>
+<span class="comment">//      A pointer to an opaque value for remembering where</span>
+<span class="comment">//      in the data this function is. Initialize cookie to 0</span>
+<span class="comment">//      before calling this function.</span>
+<span class="comment">// </span>
+<span class="comment">//</span><span class="h"> Returns:</span>
+<span class="comment">//</span><span class="underline"> --------</span>
+<span class="comment">// The number of items copied into buff. If 0 is returned,</span>
+<span class="comment">// no items were copied into the buff and there are no more</span>
+<span class="comment">// items to copy.</span>
+<span class="comment">//</span>
+<span class="comment">//</span><span class="h"> Example:</span>
+<span class="comment">//</span><span class="underline"> --------</span>
+<span class="preproc">#</span><span class="preproc">ifdef</span> SOME_API_EXAMPLE
+<span class="type">int</span> <span class="func" id="func-sum-some-api-data">sum_some_api_data</span>(<span class="type">SomeApiContext</span>* ctx){
+    <span class="type">int</span> result = <span class="literal">0</span>;
+    <span class="keyword">enum</span> {buff_len=<span class="literal">32</span>};
+    <span class="type">int</span> buff[buff_len];
+    <span class="type">size_t</span> n = <span class="literal">0</span>;
+    <span class="type">size_t</span> cookie = <span class="literal">0</span>;
+    <span class="keyword">while</span>((n = <span class="func">some_api_get_data</span>(ctx, buff, buff_len, &amp;cookie))){
+        <span class="keyword">for</span>(<span class="type">size_t</span> i = <span class="literal">0</span>; i &lt; n; i++){
+            result += buff[i];
+        }
+    }
+    <span class="keyword">return</span> result;
+}
+<span class="preproc">#</span><span class="preproc">endif</span> <span class="comment">// SOME_API_EXAMPLE</span>
+</pre>
+<p>
+And the test code:
+</p>
+<pre>
+<span class="comment">// test_some_api_docs.c</span>
+<span class="preproc">#</span><span class="preproc">include</span> <span class="literal">&lt;assert.h&gt;</span>
+<span class="preproc">#</span><span class="preproc">define</span> <span class="macro" id="macro-some-api-example">SOME_API_EXAMPLE</span>
+<span class="preproc">#</span><span class="preproc">include</span> <span class="literal">"some_api.h"</span>
+
+<span class="type">int</span> <span class="func" id="func-main">main</span>(<span class="type">void</span>){
+    <span class="type">int</span> data[<span class="literal">3</span>] = {<span class="literal">1</span>, <span class="literal">2</span>, <span class="literal">3</span>};
+    <span class="type">SomeApiContext</span>* ctx = <span class="func" id="func-some-api-create">some_api_create</span>();
+    <span class="func">some_api_store_data</span>(ctx, data, <span class="literal">3</span>);
+    assert(<span class="func">sum_some_api_data</span>(ctx) == <span class="literal">6</span>);
+    <span class="keyword">return</span> <span class="literal">0</span>;
+}
+</pre>
+<p>
+This isn't as nice as automatically extracting the examples like doctest can do,
+but when integrated into your test suite you will no longer have regressions in
+your documentation's examples. Additionally, it is nice to have examples right
+next to the definitions in the header anyway as that is what you'll jump to when
+you use your editor's GoToDefinition functionality. Finally, it is easier to
+write the examples as the examples are written as actual code instead of
+embedded in comments (so your editor and other tools understand it as code).
+</p>
+<p>
+You do need a documentation generator which understands that it needs to include
+these <tt>#ifdef</tt>'d example blocks. I'm working on such a tool based on
+libclang, but it is not ready for release yet.
+</p>
+</article>
+<div>
+<h2 id="copyright">Copyright</h2>
+<p>
+All code in this article is released into the public domain.
+</p>
+</div>
+</body>
+</html>

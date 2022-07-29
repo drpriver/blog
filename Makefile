@@ -26,14 +26,17 @@ clean:
 
 .DEFAULT_GOAL:=all
 
-# ctemplates post
+# Templates in C
 include ctemplates/ctemplates.mak
 
-# run(**vars(args)) post
+# run(**vars(args)) in python
 include runvarsargs/runvarsargs.mak
 
 # Type reification in C
 include creification/creification.mak
+
+# doctests in C
+include cdoctest/cdoctest.mak
 
 .PHONY: all
 all: $(PAGES)
@@ -41,4 +44,3 @@ all: $(PAGES)
 # rss
 feed.xml: $(PAGES)
 	python3 do_rss.py
-
