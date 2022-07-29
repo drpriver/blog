@@ -18,11 +18,10 @@ def main() -> None:
     parser.add_argument('-l', '--lang', required=True, choices={'c', 'C', 'py', 'python', 'plain'})
 
     args = parser.parse_args()
-    args.lang = {
-        'c':'C',
-        'py':'python',
-    }.get(args.lang, args.lang)
-    args.lang = Langs(args.lang)
+    args.lang = Langs({
+            'c':'C',
+            'py':'python',
+        }.get(args.lang, args.lang))
     args.name = ' '.join(args.name)
 
     run(**vars(args))
@@ -30,13 +29,12 @@ def main() -> None:
 def run(name:str, lang:Langs) -> None:
     name = name.replace(' ', '-')
     os.makedirs(name)
-    match lang:
-        case Langs.C:
-            ctemplate(name)
-        case Langs.Python:
-            pytemplate(name)
-        case Langs.Plain:
-            plaintemplate(name)
+    L = Langs
+    {
+        L.C:      ctemplate,
+        L.Python: pytemplate,
+        L.Plain:  plaintemplate,
+    }[lang](name)
     with open('Makefile', 'a') as fp:
         print(f'\ninclude {name}/{name}.mak', file=fp)
     try:
@@ -76,7 +74,16 @@ PAGES+=docs/{name}.html
         p('  //endjs')
         p(name+'::title')
         today = datetime.date.today()
-        p(today.strftime('<i>[David Priver], %B %dth, %Y</i>'))
+        d = today.day % 10
+        if d == 1:
+            suff = 'st'
+        elif d == 2:
+            suff = 'nd'
+        elif d == 3:
+            suff = 'rd'
+        else:
+            suff = 'th'
+        p(today.strftime(f'<i>[David Priver], %B %d{suff}, %Y</i>'))
         p('')
         p('::raw')
         p('  <article>')
