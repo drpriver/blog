@@ -11,12 +11,15 @@ Feel free to check out one of the following articles:
 
 [rss]
 
+[Email Me]
+
 ::links
   creification = creification.html
   runvarsargs = runvarsargs.html
   ctemplates = ctemplates.html
   cdoctests = cdoctest.html
   rss = feed.xml
+  Email Me = mailto:david@davidpriver.com
 ::css
   body {
     max-width: 44em;
