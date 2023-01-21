@@ -461,14 +461,35 @@ All code in this article is released into the public domain.
 &lt;meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"&gt;
 &lt;title&gt;run(**vars(args))&lt;/title&gt;
 &lt;style&gt;
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+}
 body {
-  max-width: 44em;
+  max-width: 68ch;
   margin: auto;
   margin-bottom: 40em;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
   padding: 12px;
   background-color: #fff;
   color: #000;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #333;
+    color: #fff;
+  }
+  a:visited {
+    color: #88f;
+  }
+  a {
+    color: #88f;
+  }
 }
 dt {
   font-weight: bold;
@@ -485,45 +506,77 @@ pre {
   overflow-x: auto;
   line-height: 125%;
 }
-a {
-  color: rgb(0, 0, 238);
-}
 tt {
   background-color: #eee;
   padding: 2px;
 }
+@media (prefers-color-scheme: dark) {
+  pre {
+    background-color: #222;
+  }
+  tt {
+    background-color: #222;
+  }
+}
+pre .enum {
+  font-weight: bold;
+}
 pre .keyword {
   color: #049407;
+}
+@media (prefers-color-scheme: dark) {
+  pre .keyword {
+    color: #24c427;
+  }
 }
 pre .comment {
   color: #000;
   font-style: italic;
 }
+
+@media (prefers-color-scheme: dark) {
+  pre .comment {
+    color: #fff;
+  }
+}
 pre .literal {
   color: #2aa198;
 }
 pre .type {
-  color: #ff8105;
+  color: #de6e00;
 }
 pre .macro {
   color: #66a;
 }
-pre .func {
+pre .func, pre .function {
   color: #213dde;
+}
+@media (prefers-color-scheme: dark) {
+  pre .func, pre .function {
+    color: #519dde;
+  }
+}
+pre .string {
+  color: #2aa198;
 }
 pre .preproc {
   color: #777;
+}
+.quoted {
+  margin-left: 2em;
+  border-left: 2px solid grey;
+  padding-left: 8px;
+}
+pre .h {
+  font-weight: bold;
+}
+pre .param {
+  color: #6a6;
 }
 h1, #runvarsargs {
   font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
 }
 /*endcss*/
-.python .keyword {
-  color: blue;
-}
-.python .type {
-  color: green;
-}
 .python .control {
   color: rgb(200, 100, 0);
 }
@@ -683,14 +736,35 @@ All code in this article is released into the public domain.
 &lt;meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"&gt;
 &lt;title&gt;_Generic for Type Reification in C&lt;/title&gt;
 &lt;style&gt;
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+}
 body {
-  max-width: 44em;
+  max-width: 68ch;
   margin: auto;
   margin-bottom: 40em;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
   padding: 12px;
   background-color: #fff;
   color: #000;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #333;
+    color: #fff;
+  }
+  a:visited {
+    color: #88f;
+  }
+  a {
+    color: #88f;
+  }
 }
 dt {
   font-weight: bold;
@@ -707,12 +781,17 @@ pre {
   overflow-x: auto;
   line-height: 125%;
 }
-a {
-  color: rgb(0, 0, 238);
-}
 tt {
   background-color: #eee;
   padding: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  pre {
+    background-color: #222;
+  }
+  tt {
+    background-color: #222;
+  }
 }
 pre .enum {
   font-weight: bold;
@@ -720,9 +799,20 @@ pre .enum {
 pre .keyword {
   color: #049407;
 }
+@media (prefers-color-scheme: dark) {
+  pre .keyword {
+    color: #24c427;
+  }
+}
 pre .comment {
   color: #000;
   font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  pre .comment {
+    color: #fff;
+  }
 }
 pre .literal {
   color: #2aa198;
@@ -733,8 +823,16 @@ pre .type {
 pre .macro {
   color: #66a;
 }
-pre .func {
+pre .func, pre .function {
   color: #213dde;
+}
+@media (prefers-color-scheme: dark) {
+  pre .func, pre .function {
+    color: #519dde;
+  }
+}
+pre .string {
+  color: #2aa198;
 }
 pre .preproc {
   color: #777;
@@ -1009,14 +1107,35 @@ All code in this article is released into the public domain.
 &lt;meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"&gt;
 &lt;title&gt;Doctests in C&lt;/title&gt;
 &lt;style&gt;
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+}
 body {
-  max-width: 44em;
+  max-width: 68ch;
   margin: auto;
   margin-bottom: 40em;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
   padding: 12px;
   background-color: #fff;
   color: #000;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #333;
+    color: #fff;
+  }
+  a:visited {
+    color: #88f;
+  }
+  a {
+    color: #88f;
+  }
 }
 dt {
   font-weight: bold;
@@ -1033,12 +1152,17 @@ pre {
   overflow-x: auto;
   line-height: 125%;
 }
-a {
-  color: rgb(0, 0, 238);
-}
 tt {
   background-color: #eee;
   padding: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  pre {
+    background-color: #222;
+  }
+  tt {
+    background-color: #222;
+  }
 }
 pre .enum {
   font-weight: bold;
@@ -1046,9 +1170,20 @@ pre .enum {
 pre .keyword {
   color: #049407;
 }
+@media (prefers-color-scheme: dark) {
+  pre .keyword {
+    color: #24c427;
+  }
+}
 pre .comment {
   color: #000;
   font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  pre .comment {
+    color: #fff;
+  }
 }
 pre .literal {
   color: #2aa198;
@@ -1059,8 +1194,16 @@ pre .type {
 pre .macro {
   color: #66a;
 }
-pre .func {
+pre .func, pre .function {
   color: #213dde;
+}
+@media (prefers-color-scheme: dark) {
+  pre .func, pre .function {
+    color: #519dde;
+  }
+}
+pre .string {
+  color: #2aa198;
 }
 pre .preproc {
   color: #777;
@@ -1211,5 +1354,646 @@ All code in this article is released into the public domain.
 &lt;/div&gt;
 &lt;/body&gt;
 &lt;/html&gt;
-</description><pubDate>Fri, 29 Jul 2022 19:02:35 GMT</pubDate><link>https://www.davidpriver.com/cdoctest.html</link><author>david@davidpriver.com</author></item></channel>
+</description><pubDate>Fri, 29 Jul 2022 19:02:35 GMT</pubDate><link>https://www.davidpriver.com/cdoctest.html</link><author>david@davidpriver.com</author></item><item><title>C in WASM</title><description>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+&lt;meta charset="UTF-8"&gt;
+&lt;meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"&gt;
+&lt;title&gt;C in WASM&lt;/title&gt;
+&lt;style&gt;
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  max-width: 68ch;
+  margin: auto;
+  margin-bottom: 40em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 12px;
+  background-color: #fff;
+  color: #000;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #333;
+    color: #fff;
+  }
+  a:visited {
+    color: #88f;
+  }
+  a {
+    color: #88f;
+  }
+}
+dt {
+  font-weight: bold;
+}
+pre {
+  padding-left: 2em;
+  padding-right: 1em;
+  padding-top: 1ex;
+  padding-bottom: 1ex;
+  background-color: #fdf6e3;
+  border-radius: 16px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  overflow-x: auto;
+  line-height: 125%;
+}
+tt {
+  background-color: #eee;
+  padding: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  pre {
+    background-color: #222;
+  }
+  tt {
+    background-color: #222;
+  }
+}
+pre .enum {
+  font-weight: bold;
+}
+pre .keyword {
+  color: #049407;
+}
+@media (prefers-color-scheme: dark) {
+  pre .keyword {
+    color: #24c427;
+  }
+}
+pre .comment {
+  color: #000;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  pre .comment {
+    color: #fff;
+  }
+}
+pre .literal {
+  color: #2aa198;
+}
+pre .type {
+  color: #de6e00;
+}
+pre .macro {
+  color: #66a;
+}
+pre .func, pre .function {
+  color: #213dde;
+}
+@media (prefers-color-scheme: dark) {
+  pre .func, pre .function {
+    color: #519dde;
+  }
+}
+pre .string {
+  color: #2aa198;
+}
+pre .preproc {
+  color: #777;
+}
+.quoted {
+  margin-left: 2em;
+  border-left: 2px solid grey;
+  padding-left: 8px;
+}
+pre .h {
+  font-weight: bold;
+}
+pre .param {
+  color: #6a6;
+}
+pre b {
+  font-weight: normal;
+}
+
+pre .let {
+  color: #5AB1FF;
+}
+pre .builtin {
+  color: #87FFAF;
+}
+pre .field {
+  color: #936;
+}
+/*endcss*/
+&lt;/style&gt;
+&lt;script&gt;
+// demo.js
+const prog64 = "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AREBEgZAGJdCGQMOOgs7CycZPxkAABc0AAIYAw46CzsLSRMAABiJggEAMRMRAQAAGS4BAw46CzsLJxk8GT8ZAAAaBQBJEwAAGyYASRMAABwBAUkTAAAdIQBJEzcLAAAeJAADDgsLPgsAAAAAjQILLmRlYnVnX2xpbmX9AAAABABBAAAAAQEB+w4NAAEBAQEAAAABAAABYy1pbi13YXNtAABwcmltaXRpdmVfbWFsbG9jLmMAAQAAZXhhbXBsZS5jAAEAAAAABQIFAAAAAxABBQ8KIQUB5QIBAAEBAAUCFwAAAAMmAQUYCgN1PAYDZKwFCAYDHUoFCgaeBQggBQ8GJQUFwAIDAAEBAAUCRQAAAAMrAQUYCgNwPAUInAUYMAUIrQUWBnQFCiAFCDwFIQYDEIIFDwN1dAUYA3qeBQUDE0pZAgMAAQEABQKQAAAAAzUBBQEKIgIBAAEBBAIABQKTAAAAFwURCgh1BRIGkAURWAUFBj0FAckCDAABAQCFAgouZGVidWdfc3RycmVzZXRfbWVtb3J5AHVuc2lnbmVkIGludABhbGlnbm1lbnQAcmVzdWx0AHNpemVfdABuX2l0ZW1zAF9iYXNlX3B0cgB1bnNpZ25lZCBjaGFyAHAAaQB1bnNpZ25lZCBsb25nAGl0ZW1fc2l6ZQB3cml0ZQBmcmVlAGNsaWNrZWQAbWFsbG9jAGNhbGxvYwBjLWluLXdhc20vZXhhbXBsZS5jAGIAX19BUlJBWV9TSVpFX1RZUEVfXwBTSVpFX1RfU0laRQBjbGFuZyB2ZXJzaW9uIDE1LjAuNgAvVXNlcnMvZHJwcml2ZXIvRG9jdW1lbnRzL0Jsb2cyAABtBG5hbWUBSAcABXdyaXRlARFfX3dhc21fY2FsbF9jdG9ycwIMcmVzZXRfbWVtb3J5AwZtYWxsb2MEBmNhbGxvYwUEZnJlZQYHY2xpY2tlZAcSAQAPX19zdGFja19wb2ludGVyCQgBAAUuZGF0YQA1CXByb2R1Y2VycwIIbGFuZ3VhZ2UBA0M5OQAMcHJvY2Vzc2VkLWJ5AQVjbGFuZwYxNS4wLjYAaw90YXJnZXRfZmVhdHVyZXMGKwtidWxrLW1lbW9yeSsKbXVsdGl2YWx1ZSsPbXV0YWJsZS1nbG9iYWxzKxNub250cmFwcGluZy1mcHRvaW50Kw9yZWZlcmVuY2UtdHlwZXMrCHNpZ24tZXh0";
+"use strict";
+let wasm_inst; // WebAssembly.Instance
+let mem; // Uint8Array
+let memview; // DataView
+let exports; // WebAssembly.Exports
+const decoder = new TextDecoder();
+const encoder = new TextEncoder();
+function wasm_string_to_js(p, len){
+    const sub = mem.subarray(p, p+len);
+    const text = decoder.decode(sub);
+    return text;
+}
+function write4(p, val){
+    memview.setInt32(p, val, true);
+}
+function js_string_to_wasm(s){
+    const encoded = encoder.encode(s);
+    const p = exports.malloc(encoded.length+4);
+    write4(p, encoded.length);
+    mem.set(encoded, p+4);
+    return p;
+}
+const imports = {
+    env:{
+      write: (p, len) =&gt; {
+        const s = wasm_string_to_js(p, len);
+        document.getElementById('scratch').innerText+=s;
+      },
+    },
+};
+document.addEventListener('DOMContentLoaded', ()=&gt;{
+  // prog64 is the base64 version of the wasm file.
+  const wasm_buffer = Uint8Array.from(
+    atob(prog64),
+    c =&gt; c.charCodeAt(0)
+  ).buffer;
+  WebAssembly.compile(wasm_buffer)
+    .then(x =&gt; WebAssembly.instantiate(x, imports))
+    .then(x =&gt; {
+      wasm_inst = x;
+      wasm_inst.exports.memory.grow(24);
+      exports = wasm_inst.exports;
+      mem = new Uint8Array(exports.memory.buffer);
+      memview = new DataView(mem.buffer);
+      let i = 0;
+      document.getElementById('click-me').onclick=()=&gt;{
+        exports.clicked(i++);
+      };
+    });
+});
+&lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;h1 id="c-in-wasm"&gt;C in WASM&lt;/h1&gt;
+&lt;p&gt;
+&lt;i&gt;&lt;a href="mailto:david@davidpriver.com"&gt;David Priver&lt;/a&gt;, January 20th, 2023&lt;/i&gt;
+&lt;/p&gt;
+&lt;h2&gt;Contents&lt;/h2&gt;
+&lt;nav&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href="#the-compiler"&gt;The Compiler&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#the-flags"&gt;The Flags&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#the-standard-library"&gt;The Standard Library&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#malloc"&gt;malloc&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#strings"&gt;Strings&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#building-the-code"&gt;Building the Code&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#instantiating-the-code"&gt;Instantiating the Code&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#debugging"&gt;Debugging&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#profiling"&gt;Profiling&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#demo"&gt;Demo&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#copyright"&gt;Copyright&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/nav&gt;&lt;article&gt;
+
+&lt;p&gt;
+If you search for information on how to compile C code to webassembly, most
+sources will tell you to use Emscripten. For various reasons (complication,
+bloat, etc.), you probably don’t want to use Emscripten. This is partially
+just for my own reference, but here is how you could compile some simple C code
+to wasm and access it from the browser.
+&lt;/p&gt;
+&lt;p&gt;
+I am assuming you want to target the browser as I don’t see the point of
+targeting the wasm runtimes that exist outside of the browser &amp;mdash; just generate
+native code. C is already a portable language and with some care you can target
+any OS used today. It will be much faster as well.
+&lt;/p&gt;
+&lt;div&gt;
+&lt;h2 id="the-compiler"&gt;The Compiler&lt;/h2&gt;
+&lt;p&gt;
+You'll need Clang. Other C compilers, such as GCC or MSVC, do not support
+compiling to wasm. Note that “Apple Clang” does not support generating
+webassembly. Strangely, it does support compiling to webassembly, but lacks
+the ability to actually generate the bytecode &amp;mdash; it will typecheck,
+semantically analyze etc. just fine and error when it would generate code.
+&lt;/p&gt;
+&lt;p&gt;
+You can get clang from your package manager or just download from their github
+releases.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="the-flags"&gt;The Flags&lt;/h2&gt;
+&lt;p&gt;
+You'll need to pass several flags to clang:
+&lt;/p&gt;
+&lt;div&gt;
+&lt;pre&gt;
+# Wasm
+--target=wasm32
+
+# Don't link to libc or assume there's crt1.o.
+--no-standard-libraries
+
+# Not a hosted environment.
+--ffreestanding
+
+# Don't add normal c include paths.
+-nostdinc
+
+# If you want to provide your own libc headers.
+-isystem &amp;lt;your replacement libc headers&amp;gt;
+&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;
+Also, enable the wasm extensions:
+&lt;/p&gt;
+&lt;div&gt;
+&lt;pre&gt;
+-mbulk-memory
+-mreference-types
+-mmultivalue
+-mmutable-globals
+-mnontrapping-fptoin
+-msign-ext
+&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;
+Basically, you want to use the wasm extensions that your targeted browsers
+will support.
+&lt;/p&gt;
+&lt;p&gt;
+Additionally, more flags need to be passed to the wasm linker (pass them
+through Clang using &lt;tt&gt;-Wl&lt;/tt&gt;):
+&lt;/p&gt;
+&lt;div&gt;
+&lt;pre&gt;
+# export all of our non-hidden symbols
+-Wl,--export-all
+
+# don't look for _start or _main
+-Wl,--no-entry
+
+# allow functions to be defined at runtime
+-Wl,--allow-undefined
+&lt;/pre&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="the-standard-library"&gt;The Standard Library&lt;/h2&gt;
+&lt;p&gt;
+Almost nothing from the C standard library will be available out of the box.
+You'll either need to write them yourself or find suitable versions to adapt.
+There are a few exceptions though: notably, &lt;tt&gt;memmove&lt;/tt&gt;, &lt;tt&gt;memcpy&lt;/tt&gt;
+and &lt;tt&gt;memset&lt;/tt&gt; can be provided by the host environment as long as you
+enable the bulk-memory extension for wasm (which is available basically
+everywhere).
+&lt;/p&gt;
+&lt;p&gt;
+In my opinion, it is most useful to treat webassembly like an embedded
+platform &amp;mdash; don’t try to provide things like printf, file IO, etc. If you
+want to pretend you’re not actually targetting wasm, just use Emscripten.
+&lt;/p&gt;
+&lt;p&gt;
+Most of the functions you want to use from libc are not actually that hard to
+implement. The tough ones are things like scanf that you don’t want to use
+anyway in a reasonable C lib.
+&lt;/p&gt;
+&lt;p&gt;
+You can also always just import functions from javascript.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="malloc"&gt;malloc&lt;/h2&gt;
+&lt;p&gt;
+You're going to want at least a primitive version of malloc so that javascript
+can alloc memory in C land (this will come up for string conversion).
+&lt;/p&gt;
+&lt;p&gt;
+A primitive malloc can be implemented as so:
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="comment"&gt;// primitive-malloc.c&lt;/span&gt;
+
+&lt;span class="comment"&gt;// Use clang extensions to your heart's delight, it's&lt;/span&gt;
+&lt;span class="comment"&gt;// your only C compiler.&lt;/span&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;pragma&lt;/span&gt; clang assume_nonnull begin
+&lt;span class="keyword"&gt;typedef&lt;/span&gt; &lt;span class="keyword"&gt;typeof&lt;/span&gt;(&lt;span class="keyword"&gt;sizeof&lt;/span&gt;(&lt;span class="literal"&gt;1&lt;/span&gt;)) &lt;span class="type"&gt;size_t&lt;/span&gt;;
+&lt;span class="keyword"&gt;enum&lt;/span&gt; {&lt;span class="anonenum" id="anonenum-size-t-size"&gt;SIZE_T_SIZE&lt;/span&gt;=&lt;span class="keyword"&gt;sizeof&lt;/span&gt;(&lt;span class="type"&gt;size_t&lt;/span&gt;)};
+
+&lt;span class="comment"&gt;// This will be defined by the instantiating wasm&lt;/span&gt;
+&lt;span class="comment"&gt;// code.&lt;/span&gt;
+&lt;span class="keyword"&gt;extern&lt;/span&gt; &lt;span class="type"&gt;unsigned&lt;/span&gt; &lt;span class="type"&gt;char&lt;/span&gt; __heap_base[];
+
+&lt;span class="keyword"&gt;static&lt;/span&gt; &lt;span class="type"&gt;unsigned&lt;/span&gt; &lt;span class="type"&gt;char&lt;/span&gt;*_base_ptr = __heap_base;
+
+&lt;span class="comment"&gt;// Useful function expose to javascript.&lt;/span&gt;
+&lt;span class="type"&gt;void&lt;/span&gt;
+&lt;span class="func" id="func-reset-memory"&gt;reset_memory&lt;/span&gt;(&lt;span class="type"&gt;void&lt;/span&gt;){
+    _base_ptr = __heap_base;
+}
+
+&lt;span class="comment"&gt;// The workhorse function.&lt;/span&gt;
+&lt;span class="comment"&gt;// Just a bump allocator.&lt;/span&gt;
+&lt;span class="keyword"&gt;static&lt;/span&gt; &lt;span class="keyword"&gt;inline&lt;/span&gt;
+&lt;span class="type"&gt;void&lt;/span&gt;*&lt;span class="keyword"&gt;_Nonnull&lt;/span&gt;
+&lt;span class="func" id="func-alloc"&gt;alloc&lt;/span&gt;(&lt;span class="type"&gt;size_t&lt;/span&gt; size, &lt;span class="type"&gt;size_t&lt;/span&gt; alignment){
+    &lt;span class="keyword"&gt;if&lt;/span&gt;(alignment &amp;gt; &lt;span class="anonenum"&gt;SIZE_T_SIZE&lt;/span&gt;)
+        alignment = &lt;span class="anonenum"&gt;SIZE_T_SIZE&lt;/span&gt;;
+    &lt;span class="type"&gt;size_t&lt;/span&gt; b = (&lt;span class="type"&gt;size_t&lt;/span&gt;)_base_ptr;
+    &lt;span class="keyword"&gt;if&lt;/span&gt;(b &amp;amp; (alignment-&lt;span class="literal"&gt;1&lt;/span&gt;)){
+        b += alignment - (b &amp;amp; (alignment-&lt;span class="literal"&gt;1&lt;/span&gt;));
+        _base_ptr = (&lt;span class="type"&gt;unsigned&lt;/span&gt; &lt;span class="type"&gt;char&lt;/span&gt;*)b;
+    }
+    &lt;span class="type"&gt;void&lt;/span&gt;* result = _base_ptr;
+    _base_ptr += size;
+    &lt;span class="keyword"&gt;return&lt;/span&gt; result;
+}
+
+&lt;span class="type"&gt;void&lt;/span&gt;*
+&lt;span class="func"&gt;malloc&lt;/span&gt;(&lt;span class="type"&gt;size_t&lt;/span&gt; size){
+    &lt;span class="keyword"&gt;return&lt;/span&gt; &lt;span class="func"&gt;alloc&lt;/span&gt;(size, &lt;span class="literal"&gt;8&lt;/span&gt;);
+}
+
+&lt;span class="type"&gt;void&lt;/span&gt;*
+&lt;span class="func"&gt;calloc&lt;/span&gt;(&lt;span class="type"&gt;size_t&lt;/span&gt; n_items, &lt;span class="type"&gt;size_t&lt;/span&gt; item_size){
+    &lt;span class="type"&gt;void&lt;/span&gt;* result = &lt;span class="func"&gt;alloc&lt;/span&gt;(n_items*item_size, item_size);
+    &lt;span class="comment"&gt;// Provided by bulk memory extension.&lt;/span&gt;
+    __builtin_memset(result, &lt;span class="literal"&gt;0&lt;/span&gt;, n_items*item_size);
+    &lt;span class="keyword"&gt;return&lt;/span&gt; result;
+}
+
+&lt;span class="comment"&gt;// Just don't do anything.&lt;/span&gt;
+&lt;span class="comment"&gt;// You could improve this by maintaining a free list.&lt;/span&gt;
+&lt;span class="type"&gt;void&lt;/span&gt;
+&lt;span class="func"&gt;free&lt;/span&gt;(&lt;span class="type"&gt;void&lt;/span&gt;*&lt;span class="keyword"&gt;_Nullable&lt;/span&gt; p){
+    (&lt;span class="type"&gt;void&lt;/span&gt;)p;
+}
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;pragma&lt;/span&gt; clang assume_nonnull end
+&lt;/pre&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="strings"&gt;Strings&lt;/h2&gt;
+&lt;p&gt;
+You'll probably want to pass strings back and forth between C and JavaScript.
+Unfortunately, there seems to be no performant way to do this - if you do this
+too much it will dominate the runtime of your code. I'll show the simplest way
+to do it.
+&lt;/p&gt;
+&lt;p&gt;
+Basically, to pass JS strings to C, you have javascript malloc a buffer and
+then use the TextEncoder API to encode their utf-16 strings into utf-8 (this
+is half of what is slow and I can’t figure out a fast way to just copy the
+utf-16 string directly as it's not &lt;b&gt;that&lt;/b&gt; hard to write your string
+processing on utf-16 (like utf-8, ascii characters are the same)).
+&lt;/p&gt;
+&lt;p&gt;
+To pass C strings to JS, you call a function provided by your javascript code
+that takes a pointer + length pair. JavaScript can then decode that memory into
+a JS String using the TextDecoder API.
+&lt;/p&gt;
+&lt;p&gt;
+Code demonstrating this:
+&lt;/p&gt;
+&lt;pre class="js"&gt;
+&lt;span class="comment"&gt;//&lt;span class="h" id="js-stringsjs"&gt;&lt;b&gt; js-strings.js&lt;/b&gt;&lt;/span&gt;&lt;/span&gt;
+&lt;span class="let"&gt;let&lt;/span&gt; &lt;span class="ident"&gt;mem&lt;/span&gt;;
+&lt;span class="let"&gt;let&lt;/span&gt; &lt;span class="ident"&gt;memview&lt;/span&gt;;
+&lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;decoder&lt;/span&gt; = &lt;span class="keyword"&gt;new&lt;/span&gt; &lt;span class="type"&gt;TextDecoder&lt;/span&gt;();
+&lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;encoder&lt;/span&gt; = &lt;span class="keyword"&gt;new&lt;/span&gt; &lt;span class="type"&gt;TextEncoder&lt;/span&gt;();
+&lt;span class="keyword"&gt;function&lt;/span&gt; &lt;span class="function"&gt;wasm_string_to_js&lt;/span&gt;(&lt;span class="ident"&gt;p&lt;/span&gt;, &lt;span class="ident"&gt;len&lt;/span&gt;) {
+    &lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;sub&lt;/span&gt; = &lt;span class="ident"&gt;mem&lt;/span&gt;.&lt;span class="function"&gt;subarray&lt;/span&gt;(&lt;span class="ident"&gt;p&lt;/span&gt;, &lt;span class="ident"&gt;p&lt;/span&gt; + &lt;span class="ident"&gt;len&lt;/span&gt;);
+    &lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;text&lt;/span&gt; = &lt;span class="ident"&gt;decoder&lt;/span&gt;.&lt;span class="function"&gt;decode&lt;/span&gt;(&lt;span class="ident"&gt;sub&lt;/span&gt;);
+    &lt;span class="keyword"&gt;return&lt;/span&gt; &lt;span class="ident"&gt;text&lt;/span&gt;;
+}
+&lt;span class="keyword"&gt;function&lt;/span&gt; &lt;span class="function"&gt;write4&lt;/span&gt;(&lt;span class="ident"&gt;p&lt;/span&gt;, &lt;span class="ident"&gt;val&lt;/span&gt;) {
+    &lt;span class="ident"&gt;memview&lt;/span&gt;.&lt;span class="function"&gt;setInt32&lt;/span&gt;(&lt;span class="ident"&gt;p&lt;/span&gt;, &lt;span class="ident"&gt;val&lt;/span&gt;, &lt;span class="literal"&gt;true&lt;/span&gt;);
+}
+&lt;span class="keyword"&gt;function&lt;/span&gt; &lt;span class="function"&gt;js_string_to_wasm&lt;/span&gt;(&lt;span class="ident"&gt;s&lt;/span&gt;) {
+    &lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;encoded&lt;/span&gt; = &lt;span class="ident"&gt;encoder&lt;/span&gt;.&lt;span class="function"&gt;encode&lt;/span&gt;(&lt;span class="ident"&gt;s&lt;/span&gt;);
+    &lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;p&lt;/span&gt; = &lt;span class="function"&gt;malloc&lt;/span&gt;(&lt;span class="ident"&gt;encoded&lt;/span&gt;.&lt;span class="ident"&gt;length&lt;/span&gt; + &lt;span class="literal"&gt;4&lt;/span&gt;);
+    &lt;span class="function"&gt;write4&lt;/span&gt;(&lt;span class="ident"&gt;p&lt;/span&gt;, &lt;span class="ident"&gt;encoded&lt;/span&gt;.&lt;span class="ident"&gt;length&lt;/span&gt;);
+    &lt;span class="ident"&gt;mem&lt;/span&gt;.&lt;span class="function"&gt;set&lt;/span&gt;(&lt;span class="ident"&gt;encoded&lt;/span&gt;, &lt;span class="ident"&gt;p&lt;/span&gt; + &lt;span class="literal"&gt;4&lt;/span&gt;);
+    &lt;span class="keyword"&gt;return&lt;/span&gt; &lt;span class="ident"&gt;p&lt;/span&gt;;
+}
+&lt;/pre&gt;
+&lt;pre&gt;
+&lt;span class="comment"&gt;// js-strings.c&lt;/span&gt;
+
+&lt;span class="comment"&gt;// I've found wrapping APIs this way is easiest&lt;/span&gt;
+&lt;span class="comment"&gt;// for me.&lt;/span&gt;
+&lt;span class="keyword"&gt;typedef&lt;/span&gt; &lt;span class="keyword"&gt;struct&lt;/span&gt; &lt;span class="type" id="type-prefixedstring"&gt;PrefixedString&lt;/span&gt; &lt;span class="type" id="type-prefixedstring"&gt;PrefixedString&lt;/span&gt;;
+&lt;span class="keyword"&gt;struct&lt;/span&gt; &lt;span class="type"&gt;PrefixedString&lt;/span&gt; {
+    &lt;span class="type"&gt;size_t&lt;/span&gt; length;
+    &lt;span class="type"&gt;unsigned&lt;/span&gt; &lt;span class="type"&gt;char&lt;/span&gt; data[];
+};
+
+&lt;span class="keyword"&gt;static&lt;/span&gt;
+&lt;span class="type"&gt;void&lt;/span&gt; &lt;span class="func" id="func-some-api"&gt;some_api&lt;/span&gt;(&lt;span class="type"&gt;size_t&lt;/span&gt; length, &lt;span class="type"&gt;const&lt;/span&gt; &lt;span class="type"&gt;char&lt;/span&gt;* txt);
+
+&lt;span class="type"&gt;void&lt;/span&gt;
+&lt;span class="func" id="func-some-api-js"&gt;some_api_js&lt;/span&gt;(&lt;span class="type"&gt;PrefixedString&lt;/span&gt;* ps){
+    &lt;span class="func"&gt;some_api&lt;/span&gt;(ps-&amp;gt;length, (&lt;span class="type"&gt;char&lt;/span&gt;*)ps-&amp;gt;data);
+}
+&lt;/pre&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="building-the-code"&gt;Building the Code&lt;/h2&gt;
+&lt;p&gt;
+You'll end up with a commandline that looks like this (put in a Makefile).
+&lt;/p&gt;
+&lt;div&gt;
+&lt;pre&gt;
+clang mycode_wasm.c -o mycode.wasm \
+--target=wasm32 --no-standard-libraries \
+-Wl,--export-all -Wl,--no-entry \
+-Wl,--allow-undefined -ffreestanding \
+-nostdinc -isystem Wasm \
+-mbulk-memory -mreference-types \
+-mmultivalue -mmutable-globals \
+-mnontrapping-fptoint -msign-ext \
+-O3
+&lt;/pre&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="instantiating-the-code"&gt;Instantiating the Code&lt;/h2&gt;
+&lt;p&gt;
+The MDN docs are pretty good, but for completeness, here is an example of how
+to instantiate a web assembly module in JavaScript.
+&lt;/p&gt;
+&lt;pre class="js"&gt;
+&lt;span class="let"&gt;let&lt;/span&gt; &lt;span class="ident"&gt;wasm_inst&lt;/span&gt;; &lt;span class="comment"&gt;// WebAssembly.Instance&lt;/span&gt;
+&lt;span class="let"&gt;let&lt;/span&gt; &lt;span class="ident"&gt;mem&lt;/span&gt;; &lt;span class="comment"&gt;// Uint8Array&lt;/span&gt;
+&lt;span class="let"&gt;let&lt;/span&gt; &lt;span class="ident"&gt;memview&lt;/span&gt;; &lt;span class="comment"&gt;// DataView&lt;/span&gt;
+&lt;span class="let"&gt;let&lt;/span&gt; &lt;span class="ident"&gt;exports&lt;/span&gt;; &lt;span class="comment"&gt;// WebAssembly.Exports&lt;/span&gt;
+&lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;decoder&lt;/span&gt; = &lt;span class="keyword"&gt;new&lt;/span&gt; &lt;span class="type"&gt;TextDecoder&lt;/span&gt;();
+&lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;encoder&lt;/span&gt; = &lt;span class="keyword"&gt;new&lt;/span&gt; &lt;span class="type"&gt;TextEncoder&lt;/span&gt;();
+
+&lt;span class="keyword"&gt;function&lt;/span&gt; &lt;span class="function"&gt;wasm_string_to_js&lt;/span&gt;(&lt;span class="ident"&gt;p&lt;/span&gt;, &lt;span class="ident"&gt;len&lt;/span&gt;){
+    &lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;sub&lt;/span&gt; = &lt;span class="ident"&gt;mem&lt;/span&gt;.&lt;span class="function"&gt;subarray&lt;/span&gt;(&lt;span class="ident"&gt;p&lt;/span&gt;, &lt;span class="ident"&gt;p&lt;/span&gt;+&lt;span class="ident"&gt;len&lt;/span&gt;);
+    &lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;text&lt;/span&gt; = &lt;span class="ident"&gt;decoder&lt;/span&gt;.&lt;span class="function"&gt;decode&lt;/span&gt;(&lt;span class="ident"&gt;sub&lt;/span&gt;);
+    &lt;span class="keyword"&gt;return&lt;/span&gt; &lt;span class="ident"&gt;text&lt;/span&gt;;
+}
+&lt;span class="keyword"&gt;function&lt;/span&gt; &lt;span class="function"&gt;write4&lt;/span&gt;(&lt;span class="ident"&gt;p&lt;/span&gt;, &lt;span class="ident"&gt;val&lt;/span&gt;){
+    &lt;span class="ident"&gt;memview&lt;/span&gt;.&lt;span class="function"&gt;setInt32&lt;/span&gt;(&lt;span class="ident"&gt;p&lt;/span&gt;, &lt;span class="ident"&gt;val&lt;/span&gt;, &lt;span class="literal"&gt;true&lt;/span&gt;);
+}
+&lt;span class="keyword"&gt;function&lt;/span&gt; &lt;span class="function"&gt;js_string_to_wasm&lt;/span&gt;(&lt;span class="ident"&gt;s&lt;/span&gt;){
+    &lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;encoded&lt;/span&gt; = &lt;span class="ident"&gt;encoder&lt;/span&gt;.&lt;span class="function"&gt;encode&lt;/span&gt;(&lt;span class="ident"&gt;s&lt;/span&gt;);
+    &lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;p&lt;/span&gt; = &lt;span class="ident"&gt;exports&lt;/span&gt;.&lt;span class="function"&gt;malloc&lt;/span&gt;(&lt;span class="ident"&gt;encoded&lt;/span&gt;.&lt;span class="ident"&gt;length&lt;/span&gt;+&lt;span class="literal"&gt;4&lt;/span&gt;);
+    &lt;span class="function"&gt;write4&lt;/span&gt;(&lt;span class="ident"&gt;p&lt;/span&gt;, &lt;span class="ident"&gt;encoded&lt;/span&gt;.&lt;span class="ident"&gt;length&lt;/span&gt;);
+    &lt;span class="ident"&gt;mem&lt;/span&gt;.&lt;span class="function"&gt;set&lt;/span&gt;(&lt;span class="ident"&gt;encoded&lt;/span&gt;, &lt;span class="ident"&gt;p&lt;/span&gt;+&lt;span class="literal"&gt;4&lt;/span&gt;);
+    &lt;span class="keyword"&gt;return&lt;/span&gt; &lt;span class="ident"&gt;p&lt;/span&gt;;
+}
+&lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;imports&lt;/span&gt; = {
+&lt;span class="comment"&gt;    //&lt;span class="h" id="js-stringsjs-javascript-functions-youre-exposing-to-c-go-here"&gt;&lt;b&gt; JavaScript functions you’re exposing to C go here.&lt;/b&gt;&lt;/span&gt;&lt;/span&gt;
+    &lt;span class="field"&gt;env&lt;/span&gt;:{
+    },
+};
+&lt;span class="function"&gt;fetch&lt;/span&gt;(&lt;span class="string"&gt;'some_wasm_path'&lt;/span&gt;)
+  .&lt;span class="function"&gt;then&lt;/span&gt;(&lt;span class="ident"&gt;response&lt;/span&gt; =&amp;gt; &lt;span class="ident"&gt;response&lt;/span&gt;.&lt;span class="function"&gt;arrayBuffer&lt;/span&gt;())
+  .&lt;span class="function"&gt;then&lt;/span&gt;(&lt;span class="ident"&gt;bytes&lt;/span&gt; =&amp;gt; &lt;span class="ident"&gt;WebAssembly&lt;/span&gt;.&lt;span class="function"&gt;instantiate&lt;/span&gt;(&lt;span class="ident"&gt;bytes&lt;/span&gt;, &lt;span class="ident"&gt;imports&lt;/span&gt;))
+  .&lt;span class="function"&gt;then&lt;/span&gt;(&lt;span class="ident"&gt;x&lt;/span&gt;=&amp;gt;{
+      &lt;span class="ident"&gt;wasm_inst&lt;/span&gt; = &lt;span class="ident"&gt;x&lt;/span&gt;.&lt;span class="ident"&gt;instance&lt;/span&gt;;
+      &lt;span class="ident"&gt;exports&lt;/span&gt; = &lt;span class="ident"&gt;wasm_inst&lt;/span&gt;.&lt;span class="ident"&gt;exports&lt;/span&gt;;
+      &lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;m&lt;/span&gt; = &lt;span class="ident"&gt;exports&lt;/span&gt;.&lt;span class="ident"&gt;memory&lt;/span&gt;;
+      &lt;span class="ident"&gt;m&lt;/span&gt;.&lt;span class="function"&gt;grow&lt;/span&gt;(&lt;span class="literal"&gt;1024&lt;/span&gt;);
+      &lt;span class="ident"&gt;mem&lt;/span&gt; = &lt;span class="keyword"&gt;new&lt;/span&gt; &lt;span class="type"&gt;Uint8Array&lt;/span&gt;(&lt;span class="ident"&gt;m&lt;/span&gt;.&lt;span class="ident"&gt;buffer&lt;/span&gt;);
+      &lt;span class="ident"&gt;memview&lt;/span&gt; = &lt;span class="keyword"&gt;new&lt;/span&gt; &lt;span class="type"&gt;DataView&lt;/span&gt;(&lt;span class="ident"&gt;mem&lt;/span&gt;.&lt;span class="ident"&gt;buffer&lt;/span&gt;);
+  });
+&lt;/pre&gt;
+&lt;p&gt;
+The above example doesn’t end up doing much, but it will instantiate the C
+code and have you set up for passing strings back and forth.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="debugging"&gt;Debugging&lt;/h2&gt;
+&lt;p&gt;
+As far as I can tell, debugging wasm code is basically only supported by
+Chrome. You can step through the bytecode in Firefox and Safari, but to
+actually map the instructions to your original source code requires chrome + a
+chrome extension. You’ll need this &lt;a href="https://chrome.google.com/webstore/detail/cc%20%20-devtools-support-dwa/pdcpmagijalfljmkmjngeonclgbbannb"&gt;extension&lt;/a&gt;.
+&lt;/p&gt;
+&lt;p&gt;
+You'll need to add the &lt;tt&gt;-g&lt;/tt&gt; flag to your compiler command line. That
+instructs clang to include DWARF debug info in the wasm file.
+&lt;/p&gt;
+&lt;p&gt;
+The extension looks up the source files by absolute path. This means that if
+you compile on one machine and debug on another, you’ll need to have the
+same file hierarchy on both machines.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="profiling"&gt;Profiling&lt;/h2&gt;
+&lt;p&gt;
+Profiling in the major browsers are all more or less the same - you can see how
+much time is spent at the granularity of function calls. This is somewhat
+unfortunate if you are used to native profiling tools which give you timings
+of each line or even drop down to the assembly level. So you won't be able to
+do things like optimize control flow. Hopefully this improves in the future.
+&lt;/p&gt;
+&lt;p&gt;
+I personally prefer the Firefox profiler UI, but they are more or less
+equivalent.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="demo"&gt;Demo&lt;/h2&gt;
+&lt;p&gt;
+Below is a complete example of using WASM.
+&lt;/p&gt;
+&lt;p&gt;
+This does very little, but shows all the necessary pieces.
+&lt;/p&gt;
+&lt;pre class="js"&gt;
+&lt;span class="comment"&gt;//&lt;span class="h" id="demojs"&gt;&lt;b&gt; demo.js&lt;/b&gt;&lt;/span&gt;&lt;/span&gt;
+&lt;span class="string"&gt;"use strict"&lt;/span&gt;;
+&lt;span class="let"&gt;let&lt;/span&gt; &lt;span class="ident"&gt;wasm_inst&lt;/span&gt;; &lt;span class="comment"&gt;// WebAssembly.Instance&lt;/span&gt;
+&lt;span class="let"&gt;let&lt;/span&gt; &lt;span class="ident"&gt;mem&lt;/span&gt;; &lt;span class="comment"&gt;// Uint8Array&lt;/span&gt;
+&lt;span class="let"&gt;let&lt;/span&gt; &lt;span class="ident"&gt;memview&lt;/span&gt;; &lt;span class="comment"&gt;// DataView&lt;/span&gt;
+&lt;span class="let"&gt;let&lt;/span&gt; &lt;span class="ident"&gt;exports&lt;/span&gt;; &lt;span class="comment"&gt;// WebAssembly.Exports&lt;/span&gt;
+&lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;decoder&lt;/span&gt; = &lt;span class="keyword"&gt;new&lt;/span&gt; &lt;span class="type"&gt;TextDecoder&lt;/span&gt;();
+&lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;encoder&lt;/span&gt; = &lt;span class="keyword"&gt;new&lt;/span&gt; &lt;span class="type"&gt;TextEncoder&lt;/span&gt;();
+&lt;span class="keyword"&gt;function&lt;/span&gt; &lt;span class="function"&gt;wasm_string_to_js&lt;/span&gt;(&lt;span class="ident"&gt;p&lt;/span&gt;, &lt;span class="ident"&gt;len&lt;/span&gt;){
+    &lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;sub&lt;/span&gt; = &lt;span class="ident"&gt;mem&lt;/span&gt;.&lt;span class="function"&gt;subarray&lt;/span&gt;(&lt;span class="ident"&gt;p&lt;/span&gt;, &lt;span class="ident"&gt;p&lt;/span&gt;+&lt;span class="ident"&gt;len&lt;/span&gt;);
+    &lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;text&lt;/span&gt; = &lt;span class="ident"&gt;decoder&lt;/span&gt;.&lt;span class="function"&gt;decode&lt;/span&gt;(&lt;span class="ident"&gt;sub&lt;/span&gt;);
+    &lt;span class="keyword"&gt;return&lt;/span&gt; &lt;span class="ident"&gt;text&lt;/span&gt;;
+}
+&lt;span class="keyword"&gt;function&lt;/span&gt; &lt;span class="function"&gt;write4&lt;/span&gt;(&lt;span class="ident"&gt;p&lt;/span&gt;, &lt;span class="ident"&gt;val&lt;/span&gt;){
+    &lt;span class="ident"&gt;memview&lt;/span&gt;.&lt;span class="function"&gt;setInt32&lt;/span&gt;(&lt;span class="ident"&gt;p&lt;/span&gt;, &lt;span class="ident"&gt;val&lt;/span&gt;, &lt;span class="literal"&gt;true&lt;/span&gt;);
+}
+&lt;span class="keyword"&gt;function&lt;/span&gt; &lt;span class="function"&gt;js_string_to_wasm&lt;/span&gt;(&lt;span class="ident"&gt;s&lt;/span&gt;){
+    &lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;encoded&lt;/span&gt; = &lt;span class="ident"&gt;encoder&lt;/span&gt;.&lt;span class="function"&gt;encode&lt;/span&gt;(&lt;span class="ident"&gt;s&lt;/span&gt;);
+    &lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;p&lt;/span&gt; = &lt;span class="ident"&gt;exports&lt;/span&gt;.&lt;span class="function"&gt;malloc&lt;/span&gt;(&lt;span class="ident"&gt;encoded&lt;/span&gt;.&lt;span class="ident"&gt;length&lt;/span&gt;+&lt;span class="literal"&gt;4&lt;/span&gt;);
+    &lt;span class="function"&gt;write4&lt;/span&gt;(&lt;span class="ident"&gt;p&lt;/span&gt;, &lt;span class="ident"&gt;encoded&lt;/span&gt;.&lt;span class="ident"&gt;length&lt;/span&gt;);
+    &lt;span class="ident"&gt;mem&lt;/span&gt;.&lt;span class="function"&gt;set&lt;/span&gt;(&lt;span class="ident"&gt;encoded&lt;/span&gt;, &lt;span class="ident"&gt;p&lt;/span&gt;+&lt;span class="literal"&gt;4&lt;/span&gt;);
+    &lt;span class="keyword"&gt;return&lt;/span&gt; &lt;span class="ident"&gt;p&lt;/span&gt;;
+}
+&lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;imports&lt;/span&gt; = {
+    &lt;span class="field"&gt;env&lt;/span&gt;:{
+      &lt;span class="field"&gt;write&lt;/span&gt;: (&lt;span class="ident"&gt;p&lt;/span&gt;, &lt;span class="ident"&gt;len&lt;/span&gt;) =&amp;gt; {
+        &lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;s&lt;/span&gt; = &lt;span class="function"&gt;wasm_string_to_js&lt;/span&gt;(&lt;span class="ident"&gt;p&lt;/span&gt;, &lt;span class="ident"&gt;len&lt;/span&gt;);
+        &lt;span class="ident"&gt;document&lt;/span&gt;.&lt;span class="function"&gt;getElementById&lt;/span&gt;(&lt;span class="string"&gt;'scratch'&lt;/span&gt;).&lt;span class="ident"&gt;innerText&lt;/span&gt;+=&lt;span class="ident"&gt;s&lt;/span&gt;;
+      },
+    },
+};
+&lt;span class="ident"&gt;document&lt;/span&gt;.&lt;span class="function"&gt;addEventListener&lt;/span&gt;(&lt;span class="string"&gt;'DOMContentLoaded'&lt;/span&gt;, ()=&amp;gt;{
+&lt;span class="comment"&gt;  //&lt;span class="h" id="demojs-prog64-is-the-base64-version-of-the-wasm-file"&gt;&lt;b&gt; prog64 is the base64 version of the wasm file.&lt;/b&gt;&lt;/span&gt;&lt;/span&gt;
+  &lt;span class="let"&gt;const&lt;/span&gt; &lt;span class="ident"&gt;wasm_buffer&lt;/span&gt; = &lt;span class="type"&gt;Uint8Array&lt;/span&gt;.&lt;span class="function"&gt;from&lt;/span&gt;(
+    &lt;span class="function"&gt;atob&lt;/span&gt;(&lt;span class="ident"&gt;prog64&lt;/span&gt;),
+    &lt;span class="ident"&gt;c&lt;/span&gt; =&amp;gt; &lt;span class="ident"&gt;c&lt;/span&gt;.&lt;span class="function"&gt;charCodeAt&lt;/span&gt;(&lt;span class="literal"&gt;0&lt;/span&gt;)
+  ).&lt;span class="ident"&gt;buffer&lt;/span&gt;;
+  &lt;span class="ident"&gt;WebAssembly&lt;/span&gt;.&lt;span class="function"&gt;compile&lt;/span&gt;(&lt;span class="ident"&gt;wasm_buffer&lt;/span&gt;)
+    .&lt;span class="function"&gt;then&lt;/span&gt;(&lt;span class="ident"&gt;x&lt;/span&gt; =&amp;gt; &lt;span class="ident"&gt;WebAssembly&lt;/span&gt;.&lt;span class="function"&gt;instantiate&lt;/span&gt;(&lt;span class="ident"&gt;x&lt;/span&gt;, &lt;span class="ident"&gt;imports&lt;/span&gt;))
+    .&lt;span class="function"&gt;then&lt;/span&gt;(&lt;span class="ident"&gt;x&lt;/span&gt; =&amp;gt; {
+      &lt;span class="ident"&gt;wasm_inst&lt;/span&gt; = &lt;span class="ident"&gt;x&lt;/span&gt;;
+      &lt;span class="ident"&gt;wasm_inst&lt;/span&gt;.&lt;span class="ident"&gt;exports&lt;/span&gt;.&lt;span class="ident"&gt;memory&lt;/span&gt;.&lt;span class="function"&gt;grow&lt;/span&gt;(&lt;span class="literal"&gt;24&lt;/span&gt;);
+      &lt;span class="ident"&gt;exports&lt;/span&gt; = &lt;span class="ident"&gt;wasm_inst&lt;/span&gt;.&lt;span class="ident"&gt;exports&lt;/span&gt;;
+      &lt;span class="ident"&gt;mem&lt;/span&gt; = &lt;span class="keyword"&gt;new&lt;/span&gt; &lt;span class="type"&gt;Uint8Array&lt;/span&gt;(&lt;span class="ident"&gt;exports&lt;/span&gt;.&lt;span class="ident"&gt;memory&lt;/span&gt;.&lt;span class="ident"&gt;buffer&lt;/span&gt;);
+      &lt;span class="ident"&gt;memview&lt;/span&gt; = &lt;span class="keyword"&gt;new&lt;/span&gt; &lt;span class="type"&gt;DataView&lt;/span&gt;(&lt;span class="ident"&gt;mem&lt;/span&gt;.&lt;span class="ident"&gt;buffer&lt;/span&gt;);
+      &lt;span class="let"&gt;let&lt;/span&gt; &lt;span class="ident"&gt;i&lt;/span&gt; = &lt;span class="literal"&gt;0&lt;/span&gt;;
+      &lt;span class="ident"&gt;document&lt;/span&gt;.&lt;span class="function"&gt;getElementById&lt;/span&gt;(&lt;span class="string"&gt;'click-me'&lt;/span&gt;).&lt;span class="ident"&gt;onclick&lt;/span&gt;=()=&amp;gt;{
+        &lt;span class="ident"&gt;exports&lt;/span&gt;.&lt;span class="function"&gt;clicked&lt;/span&gt;(&lt;span class="ident"&gt;i&lt;/span&gt;++);
+      };
+    });
+});
+&lt;/pre&gt;
+&lt;pre&gt;
+&lt;span class="comment"&gt;// example.c&lt;/span&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;include&lt;/span&gt; &lt;span class="literal"&gt;"primitive_malloc.c"&lt;/span&gt;
+
+&lt;span class="keyword"&gt;extern&lt;/span&gt; &lt;span class="type"&gt;void&lt;/span&gt; &lt;span class="func" id="func-write"&gt;write&lt;/span&gt;(&lt;span class="type"&gt;const&lt;/span&gt; &lt;span class="type"&gt;char&lt;/span&gt;*, &lt;span class="type"&gt;size_t&lt;/span&gt;);
+
+&lt;span class="type"&gt;void&lt;/span&gt; &lt;span class="func" id="func-clicked"&gt;clicked&lt;/span&gt;(&lt;span class="type"&gt;int&lt;/span&gt; i){
+    &lt;span class="type"&gt;char&lt;/span&gt; c[&lt;span class="literal"&gt;2&lt;/span&gt;] = {(i &amp;amp;&lt;span class="literal"&gt;0xf&lt;/span&gt;)+ &lt;span class="literal"&gt;'a'&lt;/span&gt;, &lt;span class="literal"&gt;'\n'&lt;/span&gt;};
+    &lt;span class="func"&gt;write&lt;/span&gt;(c, &lt;span class="keyword"&gt;sizeof&lt;/span&gt; c);
+}
+&lt;/pre&gt;
+&lt;button id=click-me&gt;Click Me&lt;/button&gt;
+&lt;pre id=scratch&gt;
+&lt;/pre&gt;
+
+&lt;/div&gt;
+&lt;/article&gt;
+&lt;div&gt;
+&lt;h2 id="copyright"&gt;Copyright&lt;/h2&gt;
+&lt;p&gt;
+All code in this article is released into the public domain.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</description><pubDate>Sat, 21 Jan 2023 03:08:21 GMT</pubDate><link>https://www.davidpriver.com/c-in-wasm.html</link><author>david@davidpriver.com</author></item></channel>
 </rss>
