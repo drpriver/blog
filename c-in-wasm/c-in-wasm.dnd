@@ -1,0 +1,330 @@
+::css #import
+  ../../c.css
+::js
+  let wrapped = ctx.select_nodes({attributes:['wrapped']});
+  for(let w of wrapped){
+    w.insert_child(0, '<pre>');
+    w.add_child('</pre>');
+  }
+  for(let n of ctx.select_nodes({type:NodeType.PRE})){
+    while(n.children.length){
+      if(!n.children[n.children.length-1].header)
+        n.children[n.children.length-1].detach()
+      else
+        break;
+    }
+  }
+  //endjs
+C in WASM::title
+<i>[David Priver], January 20th, 2023</i>
+
+Contents::h #noid
+::toc
+::raw
+  <article>
+
+If you search for information on how to compile C code to webassembly, most
+sources will tell you to use Emscripten. For various reasons (complication,
+bloat, etc.), you probably don’t want to use Emscripten. This is partially
+just for my own reference, but here is how you could compile some simple C code
+to wasm and access it from the browser.
+
+I am assuming you want to target the browser as I don’t see the point of
+targeting the wasm runtimes that exist outside of the browser --- just generate
+native code. C is already a portable language and with some care you can target
+any OS used today. It will be much faster as well.
+
+The Compiler::md
+  You'll need Clang. Other C compilers, such as GCC or MSVC, do not support
+  compiling to wasm. Note that “Apple Clang” does not support generating
+  webassembly. Strangely, it does support compiling to webassembly, but lacks
+  the ability to actually generate the bytecode --- it will typecheck,
+  semantically analyze etc. just fine and error when it would generate code.
+
+  You can get clang from your package manager or just download from their github
+  releases.
+
+The Flags::md
+  You'll need to pass several flags to clang:
+
+  ::pre
+    # Wasm
+    --target=wasm32
+
+    # Don't link to libc or assume there's crt1.o.
+    --no-standard-libraries
+
+    # Not a hosted environment.
+    --ffreestanding
+
+    # Don't add normal c include paths.
+    -nostdinc
+
+    # If you want to provide your own libc headers.
+    -isystem <your replacement libc headers>
+
+  Also, enable the wasm extensions:
+
+  ::pre
+    -mbulk-memory
+    -mreference-types
+    -mmultivalue
+    -mmutable-globals
+    -mnontrapping-fptoin
+    -msign-ext
+
+  Basically, you want to use the wasm extensions that your targeted browsers
+  will support.
+
+  Additionally, more flags need to be passed to the wasm linker (pass them
+  through Clang using <tt>-Wl</tt>):
+
+  ::pre
+    # export all of our non-hidden symbols
+    -Wl,--export-all
+
+    # don't look for _start or _main
+    -Wl,--no-entry
+
+    # allow functions to be defined at runtime
+    -Wl,--allow-undefined
+
+The Standard Library::md
+  Almost nothing from the C standard library will be available out of the box.
+  You'll either need to write them yourself or find suitable versions to adapt.
+  There are a few exceptions though: notably, <tt>memmove</tt>, <tt>memcpy</tt>
+  and <tt>memset</tt> can be provided by the host environment as long as you
+  enable the bulk-memory extension for wasm (which is available basically
+  everywhere).
+
+  In my opinion, it is most useful to treat webassembly like an embedded
+  platform --- don’t try to provide things like printf, file IO, etc. If you
+  want to pretend you’re not actually targetting wasm, just use Emscripten.
+
+  Most of the functions you want to use from libc are not actually that hard to
+  implement. The tough ones are things like scanf that you don’t want to use
+  anyway in a reasonable C lib.
+
+  You can also always just import functions from javascript.
+
+malloc::md
+  You're going to want at least a primitive version of malloc so that javascript
+  can alloc memory in C land (this will come up for string conversion).
+
+  A primitive malloc can be implemented as so:
+
+  ::raw @wrapped #import
+    primitive_malloc.c.html
+Strings::md
+  You'll probably want to pass strings back and forth between C and JavaScript.
+  Unfortunately, there seems to be no performant way to do this - if you do this
+  too much it will dominate the runtime of your code. I'll show the simplest way
+  to do it.
+
+  Basically, to pass JS strings to C, you have javascript malloc a buffer and
+  then use the TextEncoder API to encode their utf-16 strings into utf-8 (this
+  is half of what is slow and I can’t figure out a fast way to just copy the
+  utf-16 string directly as it's not <b>that</b> hard to write your string
+  processing on utf-16 (like utf-8, ascii characters are the same)).
+
+  To pass C strings to JS, you call a function provided by your javascript code
+  that takes a pointer + length pair. JavaScript can then decode that memory into
+  a JS String using the TextDecoder API.
+
+  Code demonstrating this:
+
+  ::pre .js
+    // js-strings.js
+    let mem;
+    let memview;
+    const decoder = new TextDecoder();
+    const encoder = new TextEncoder();
+    function wasm_string_to_js(p, len) {
+        const sub = mem.subarray(p, p + len);
+        const text = decoder.decode(sub);
+        return text;
+    }
+    function write4(p, val) {
+        memview.setInt32(p, val, true);
+    }
+    function js_string_to_wasm(s) {
+        const encoded = encoder.encode(s);
+        const p = malloc(encoded.length + 4);
+        write4(p, encoded.length);
+        mem.set(encoded, p + 4);
+        return p;
+    }
+  ::raw @wrapped #import
+    jsinter.c.html
+Building the Code::md
+  You'll end up with a commandline that looks like this (put in a Makefile).
+
+  ::pre
+    clang mycode_wasm.c -o mycode.wasm \
+    --target=wasm32 --no-standard-libraries \
+    -Wl,--export-all -Wl,--no-entry \
+    -Wl,--allow-undefined -ffreestanding \
+    -nostdinc -isystem Wasm \
+    -mbulk-memory -mreference-types \
+    -mmultivalue -mmutable-globals \
+    -mnontrapping-fptoint -msign-ext \
+    -O3
+
+Instantiating the Code::md
+  The MDN docs are pretty good, but for completeness, here is an example of how
+  to instantiate a web assembly module in JavaScript.
+
+  ::pre .js
+    let wasm_inst; // WebAssembly.Instance
+    let mem; // Uint8Array
+    let memview; // DataView
+    let exports; // WebAssembly.Exports
+    const decoder = new TextDecoder();
+    const encoder = new TextEncoder();
+
+    function wasm_string_to_js(p, len){
+        const sub = mem.subarray(p, p+len);
+        const text = decoder.decode(sub);
+        return text;
+    }
+    function write4(p, val){
+        memview.setInt32(p, val, true);
+    }
+    function js_string_to_wasm(s){
+        const encoded = encoder.encode(s);
+        const p = exports.malloc(encoded.length+4);
+        write4(p, encoded.length);
+        mem.set(encoded, p+4);
+        return p;
+    }
+    const imports = {
+        // JavaScript functions you’re exposing to C go here.
+        env:{
+        },
+    };
+    fetch('some_wasm_path')
+      .then(response => response.arrayBuffer())
+      .then(bytes => WebAssembly.instantiate(bytes, imports))
+      .then(x=>{
+          wasm_inst = x.instance;
+          exports = wasm_inst.exports;
+          const m = exports.memory;
+          m.grow(1024);
+          mem = new Uint8Array(m.buffer);
+          memview = new DataView(mem.buffer);
+      });
+  The above example doesn’t end up doing much, but it will instantiate the C
+  code and have you set up for passing strings back and forth.
+
+Debugging::md
+  As far as I can tell, debugging wasm code is basically only supported by
+  Chrome. You can step through the bytecode in Firefox and Safari, but to
+  actually map the instructions to your original source code requires chrome + a
+  chrome extension. You’ll need this [extension].
+
+  You'll need to add the <tt>-g</tt> flag to your compiler command line. That
+  instructs clang to include DWARF debug info in the wasm file.
+
+  The extension looks up the source files by absolute path. This means that if
+  you compile on one machine and debug on another, you’ll need to have the
+  same file hierarchy on both machines.
+
+  ::links
+    extension = https://chrome.google.com/webstore/detail/cc%20%20-devtools-support-dwa/pdcpmagijalfljmkmjngeonclgbbannb
+Profiling::md
+  Profiling in the major browsers are all more or less the same - you can see how
+  much time is spent at the granularity of function calls. This is somewhat
+  unfortunate if you are used to native profiling tools which give you timings
+  of each line or even drop down to the assembly level. So you won't be able to
+  do things like optimize control flow. Hopefully this improves in the future.
+
+  I personally prefer the Firefox profiler UI, but they are more or less
+  equivalent.
+
+Demo::md
+  Below is a complete example of using WASM.
+
+  This does very little, but shows all the necessary pieces.
+
+  ::pre .js #id(wasm-demo)
+    // demo.js
+    "use strict";
+    let wasm_inst; // WebAssembly.Instance
+    let mem; // Uint8Array
+    let memview; // DataView
+    let exports; // WebAssembly.Exports
+    const decoder = new TextDecoder();
+    const encoder = new TextEncoder();
+    function wasm_string_to_js(p, len){
+        const sub = mem.subarray(p, p+len);
+        const text = decoder.decode(sub);
+        return text;
+    }
+    function write4(p, val){
+        memview.setInt32(p, val, true);
+    }
+    function js_string_to_wasm(s){
+        const encoded = encoder.encode(s);
+        const p = exports.malloc(encoded.length+4);
+        write4(p, encoded.length);
+        mem.set(encoded, p+4);
+        return p;
+    }
+    const imports = {
+        env:{
+          write: (p, len) => {
+            const s = wasm_string_to_js(p, len);
+            document.getElementById('scratch').innerText+=s;
+          },
+        },
+    };
+    document.addEventListener('DOMContentLoaded', ()=>{
+      // prog64 is the base64 version of the wasm file.
+      const wasm_buffer = Uint8Array.from(
+        atob(prog64),
+        c => c.charCodeAt(0)
+      ).buffer;
+      WebAssembly.compile(wasm_buffer)
+        .then(x => WebAssembly.instantiate(x, imports))
+        .then(x => {
+          wasm_inst = x;
+          wasm_inst.exports.memory.grow(24);
+          exports = wasm_inst.exports;
+          mem = new Uint8Array(exports.memory.buffer);
+          memview = new DataView(mem.buffer);
+          let i = 0;
+          document.getElementById('click-me').onclick=()=>{
+            exports.clicked(i++);
+          };
+        });
+    });
+  ::raw @wrapped #import
+    example.c.html
+  ::js
+    const wd = ctx.by_id('wasm-demo');
+    const c = wd.clone();
+    c.type = NodeType.SCRIPTS;
+    node.parent.add_child(c);
+    const b64 = FileSystem.load_file_as_base64('build/c-in-wasm/example.wasm');
+    c.insert_child(1, `const prog64 = "${b64}";`);
+    //endjs
+  ::raw
+    <button id=click-me>Click Me</button>
+    <pre id=scratch>
+    </pre>
+
+::css
+  pre b {
+    font-weight: normal;
+  }
+
+::raw
+  </article>
+Copyright::md
+  All code in this article is released into the public domain.
+
+::links
+  home = https://www.davidpriver.com
+  David Priver = mailto:david@davidpriver.com
+::import
+  ../../jsdoc.dnd

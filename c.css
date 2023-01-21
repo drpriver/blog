@@ -1,11 +1,32 @@
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+}
 body {
-  max-width: 44em;
+  max-width: 68ch;
   margin: auto;
   margin-bottom: 40em;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
   padding: 12px;
   background-color: #fff;
   color: #000;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #333;
+    color: #fff;
+  }
+  a:visited {
+    color: #88f;
+  }
+  a {
+    color: #88f;
+  }
 }
 dt {
   font-weight: bold;
@@ -22,12 +43,17 @@ pre {
   overflow-x: auto;
   line-height: 125%;
 }
-a {
-  color: rgb(0, 0, 238);
-}
 tt {
   background-color: #eee;
   padding: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  pre {
+    background-color: #222;
+  }
+  tt {
+    background-color: #222;
+  }
 }
 pre .enum {
   font-weight: bold;
@@ -35,9 +61,20 @@ pre .enum {
 pre .keyword {
   color: #049407;
 }
+@media (prefers-color-scheme: dark) {
+  pre .keyword {
+    color: #24c427;
+  }
+}
 pre .comment {
   color: #000;
   font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  pre .comment {
+    color: #fff;
+  }
 }
 pre .literal {
   color: #2aa198;
@@ -48,8 +85,16 @@ pre .type {
 pre .macro {
   color: #66a;
 }
-pre .func {
+pre .func, pre .function {
   color: #213dde;
+}
+@media (prefers-color-scheme: dark) {
+  pre .func, pre .function {
+    color: #519dde;
+  }
+}
+pre .string {
+  color: #2aa198;
 }
 pre .preproc {
   color: #777;

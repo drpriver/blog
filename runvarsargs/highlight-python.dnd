@@ -1,10 +1,4 @@
 ::css
-  .python .keyword {
-    color: blue;
-  }
-  .python .type {
-    color: green;
-  }
   .python .control {
     color: rgb(200, 100, 0);
   }

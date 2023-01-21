@@ -1,57 +1,6 @@
+::css #import
+  ../c.css
 ::css
-  body {
-    max-width: 44em;
-    margin: auto;
-    margin-bottom: 40em;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-    padding: 12px;
-    background-color: #fff;
-    color: #000;
-  }
-  dt {
-    font-weight: bold;
-  }
-  pre {
-    padding-left: 2em;
-    padding-right: 1em;
-    padding-top: 1ex;
-    padding-bottom: 1ex;
-    background-color: #fdf6e3;
-    border-radius: 16px;
-    font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
-    font-size: 1rem;
-    overflow-x: auto;
-    line-height: 125%;
-  }
-  a {
-    color: rgb(0, 0, 238);
-  }
-  tt {
-    background-color: #eee;
-    padding: 2px;
-  }
-  pre .keyword {
-    color: #049407;
-  }
-  pre .comment {
-    color: #000;
-    font-style: italic;
-  }
-  pre .literal {
-    color: #2aa198;
-  }
-  pre .type {
-    color: #ff8105;
-  }
-  pre .macro {
-    color: #66a;
-  }
-  pre .func {
-    color: #213dde;
-  }
-  pre .preproc {
-    color: #777;
-  }
   h1, #runvarsargs {
     font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
   }

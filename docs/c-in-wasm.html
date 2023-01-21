@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>C in WASM</title>
+<style>
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  max-width: 68ch;
+  margin: auto;
+  margin-bottom: 40em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 12px;
+  background-color: #fff;
+  color: #000;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #333;
+    color: #fff;
+  }
+  a:visited {
+    color: #88f;
+  }
+  a {
+    color: #88f;
+  }
+}
+dt {
+  font-weight: bold;
+}
+pre {
+  padding-left: 2em;
+  padding-right: 1em;
+  padding-top: 1ex;
+  padding-bottom: 1ex;
+  background-color: #fdf6e3;
+  border-radius: 16px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  overflow-x: auto;
+  line-height: 125%;
+}
+tt {
+  background-color: #eee;
+  padding: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  pre {
+    background-color: #222;
+  }
+  tt {
+    background-color: #222;
+  }
+}
+pre .enum {
+  font-weight: bold;
+}
+pre .keyword {
+  color: #049407;
+}
+@media (prefers-color-scheme: dark) {
+  pre .keyword {
+    color: #24c427;
+  }
+}
+pre .comment {
+  color: #000;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  pre .comment {
+    color: #fff;
+  }
+}
+pre .literal {
+  color: #2aa198;
+}
+pre .type {
+  color: #de6e00;
+}
+pre .macro {
+  color: #66a;
+}
+pre .func, pre .function {
+  color: #213dde;
+}
+@media (prefers-color-scheme: dark) {
+  pre .func, pre .function {
+    color: #519dde;
+  }
+}
+pre .string {
+  color: #2aa198;
+}
+pre .preproc {
+  color: #777;
+}
+.quoted {
+  margin-left: 2em;
+  border-left: 2px solid grey;
+  padding-left: 8px;
+}
+pre .h {
+  font-weight: bold;
+}
+pre .param {
+  color: #6a6;
+}
+pre b {
+  font-weight: normal;
+}
+
+pre .let {
+  color: #5AB1FF;
+}
+pre .builtin {
+  color: #87FFAF;
+}
+pre .field {
+  color: #936;
+}
+/*endcss*/
+</style>
+<script>
+// demo.js
+const prog64 = "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AREBEgZAGJdCGQMOOgs7CycZPxkAABc0AAIYAw46CzsLSRMAABiJggEAMRMRAQAAGS4BAw46CzsLJxk8GT8ZAAAaBQBJEwAAGyYASRMAABwBAUkTAAAdIQBJEzcLAAAeJAADDgsLPgsAAAAAjQILLmRlYnVnX2xpbmX9AAAABABBAAAAAQEB+w4NAAEBAQEAAAABAAABYy1pbi13YXNtAABwcmltaXRpdmVfbWFsbG9jLmMAAQAAZXhhbXBsZS5jAAEAAAAABQIFAAAAAxABBQ8KIQUB5QIBAAEBAAUCFwAAAAMmAQUYCgN1PAYDZKwFCAYDHUoFCgaeBQggBQ8GJQUFwAIDAAEBAAUCRQAAAAMrAQUYCgNwPAUInAUYMAUIrQUWBnQFCiAFCDwFIQYDEIIFDwN1dAUYA3qeBQUDE0pZAgMAAQEABQKQAAAAAzUBBQEKIgIBAAEBBAIABQKTAAAAFwURCgh1BRIGkAURWAUFBj0FAckCDAABAQCFAgouZGVidWdfc3RycmVzZXRfbWVtb3J5AHVuc2lnbmVkIGludABhbGlnbm1lbnQAcmVzdWx0AHNpemVfdABuX2l0ZW1zAF9iYXNlX3B0cgB1bnNpZ25lZCBjaGFyAHAAaQB1bnNpZ25lZCBsb25nAGl0ZW1fc2l6ZQB3cml0ZQBmcmVlAGNsaWNrZWQAbWFsbG9jAGNhbGxvYwBjLWluLXdhc20vZXhhbXBsZS5jAGIAX19BUlJBWV9TSVpFX1RZUEVfXwBTSVpFX1RfU0laRQBjbGFuZyB2ZXJzaW9uIDE1LjAuNgAvVXNlcnMvZHJwcml2ZXIvRG9jdW1lbnRzL0Jsb2cyAABtBG5hbWUBSAcABXdyaXRlARFfX3dhc21fY2FsbF9jdG9ycwIMcmVzZXRfbWVtb3J5AwZtYWxsb2MEBmNhbGxvYwUEZnJlZQYHY2xpY2tlZAcSAQAPX19zdGFja19wb2ludGVyCQgBAAUuZGF0YQA1CXByb2R1Y2VycwIIbGFuZ3VhZ2UBA0M5OQAMcHJvY2Vzc2VkLWJ5AQVjbGFuZwYxNS4wLjYAaw90YXJnZXRfZmVhdHVyZXMGKwtidWxrLW1lbW9yeSsKbXVsdGl2YWx1ZSsPbXV0YWJsZS1nbG9iYWxzKxNub250cmFwcGluZy1mcHRvaW50Kw9yZWZlcmVuY2UtdHlwZXMrCHNpZ24tZXh0";
+"use strict";
+let wasm_inst; // WebAssembly.Instance
+let mem; // Uint8Array
+let memview; // DataView
+let exports; // WebAssembly.Exports
+const decoder = new TextDecoder();
+const encoder = new TextEncoder();
+function wasm_string_to_js(p, len){
+    const sub = mem.subarray(p, p+len);
+    const text = decoder.decode(sub);
+    return text;
+}
+function write4(p, val){
+    memview.setInt32(p, val, true);
+}
+function js_string_to_wasm(s){
+    const encoded = encoder.encode(s);
+    const p = exports.malloc(encoded.length+4);
+    write4(p, encoded.length);
+    mem.set(encoded, p+4);
+    return p;
+}
+const imports = {
+    env:{
+      write: (p, len) => {
+        const s = wasm_string_to_js(p, len);
+        document.getElementById('scratch').innerText+=s;
+      },
+    },
+};
+document.addEventListener('DOMContentLoaded', ()=>{
+  // prog64 is the base64 version of the wasm file.
+  const wasm_buffer = Uint8Array.from(
+    atob(prog64),
+    c => c.charCodeAt(0)
+  ).buffer;
+  WebAssembly.compile(wasm_buffer)
+    .then(x => WebAssembly.instantiate(x, imports))
+    .then(x => {
+      wasm_inst = x;
+      wasm_inst.exports.memory.grow(24);
+      exports = wasm_inst.exports;
+      mem = new Uint8Array(exports.memory.buffer);
+      memview = new DataView(mem.buffer);
+      let i = 0;
+      document.getElementById('click-me').onclick=()=>{
+        exports.clicked(i++);
+      };
+    });
+});
+</script>
+</head>
+<body>
+<h1 id="c-in-wasm">C in WASM</h1>
+<p>
+<i><a href="mailto:david@davidpriver.com">David Priver</a>, January 20th, 2023</i>
+</p>
+<h2>Contents</h2>
+<nav>
+<ul>
+<li><a href="#the-compiler">The Compiler</a></li>
+<li><a href="#the-flags">The Flags</a></li>
+<li><a href="#the-standard-library">The Standard Library</a></li>
+<li><a href="#malloc">malloc</a></li>
+<li><a href="#strings">Strings</a></li>
+<li><a href="#building-the-code">Building the Code</a></li>
+<li><a href="#instantiating-the-code">Instantiating the Code</a></li>
+<li><a href="#debugging">Debugging</a></li>
+<li><a href="#profiling">Profiling</a></li>
+<li><a href="#demo">Demo</a></li>
+<li><a href="#copyright">Copyright</a></li>
+</ul>
+</nav><article>
+
+<p>
+If you search for information on how to compile C code to webassembly, most
+sources will tell you to use Emscripten. For various reasons (complication,
+bloat, etc.), you probably don’t want to use Emscripten. This is partially
+just for my own reference, but here is how you could compile some simple C code
+to wasm and access it from the browser.
+</p>
+<p>
+I am assuming you want to target the browser as I don’t see the point of
+targeting the wasm runtimes that exist outside of the browser &mdash; just generate
+native code. C is already a portable language and with some care you can target
+any OS used today. It will be much faster as well.
+</p>
+<div>
+<h2 id="the-compiler">The Compiler</h2>
+<p>
+You'll need Clang. Other C compilers, such as GCC or MSVC, do not support
+compiling to wasm. Note that “Apple Clang” does not support generating
+webassembly. Strangely, it does support compiling to webassembly, but lacks
+the ability to actually generate the bytecode &mdash; it will typecheck,
+semantically analyze etc. just fine and error when it would generate code.
+</p>
+<p>
+You can get clang from your package manager or just download from their github
+releases.
+</p>
+</div>
+<div>
+<h2 id="the-flags">The Flags</h2>
+<p>
+You'll need to pass several flags to clang:
+</p>
+<div>
+<pre>
+# Wasm
+--target=wasm32
+
+# Don't link to libc or assume there's crt1.o.
+--no-standard-libraries
+
+# Not a hosted environment.
+--ffreestanding
+
+# Don't add normal c include paths.
+-nostdinc
+
+# If you want to provide your own libc headers.
+-isystem &lt;your replacement libc headers&gt;
+</pre>
+</div>
+<p>
+Also, enable the wasm extensions:
+</p>
+<div>
+<pre>
+-mbulk-memory
+-mreference-types
+-mmultivalue
+-mmutable-globals
+-mnontrapping-fptoin
+-msign-ext
+</pre>
+</div>
+<p>
+Basically, you want to use the wasm extensions that your targeted browsers
+will support.
+</p>
+<p>
+Additionally, more flags need to be passed to the wasm linker (pass them
+through Clang using <tt>-Wl</tt>):
+</p>
+<div>
+<pre>
+# export all of our non-hidden symbols
+-Wl,--export-all
+
+# don't look for _start or _main
+-Wl,--no-entry
+
+# allow functions to be defined at runtime
+-Wl,--allow-undefined
+</pre>
+</div>
+</div>
+<div>
+<h2 id="the-standard-library">The Standard Library</h2>
+<p>
+Almost nothing from the C standard library will be available out of the box.
+You'll either need to write them yourself or find suitable versions to adapt.
+There are a few exceptions though: notably, <tt>memmove</tt>, <tt>memcpy</tt>
+and <tt>memset</tt> can be provided by the host environment as long as you
+enable the bulk-memory extension for wasm (which is available basically
+everywhere).
+</p>
+<p>
+In my opinion, it is most useful to treat webassembly like an embedded
+platform &mdash; don’t try to provide things like printf, file IO, etc. If you
+want to pretend you’re not actually targetting wasm, just use Emscripten.
+</p>
+<p>
+Most of the functions you want to use from libc are not actually that hard to
+implement. The tough ones are things like scanf that you don’t want to use
+anyway in a reasonable C lib.
+</p>
+<p>
+You can also always just import functions from javascript.
+</p>
+</div>
+<div>
+<h2 id="malloc">malloc</h2>
+<p>
+You're going to want at least a primitive version of malloc so that javascript
+can alloc memory in C land (this will come up for string conversion).
+</p>
+<p>
+A primitive malloc can be implemented as so:
+</p>
+<pre>
+<span class="comment">// primitive-malloc.c</span>
+
+<span class="comment">// Use clang extensions to your heart's delight, it's</span>
+<span class="comment">// your only C compiler.</span>
+<span class="preproc">#</span><span class="preproc">pragma</span> clang assume_nonnull begin
+<span class="keyword">typedef</span> <span class="keyword">typeof</span>(<span class="keyword">sizeof</span>(<span class="literal">1</span>)) <span class="type">size_t</span>;
+<span class="keyword">enum</span> {<span class="anonenum" id="anonenum-size-t-size">SIZE_T_SIZE</span>=<span class="keyword">sizeof</span>(<span class="type">size_t</span>)};
+
+<span class="comment">// This will be defined by the instantiating wasm</span>
+<span class="comment">// code.</span>
+<span class="keyword">extern</span> <span class="type">unsigned</span> <span class="type">char</span> __heap_base[];
+
+<span class="keyword">static</span> <span class="type">unsigned</span> <span class="type">char</span>*_base_ptr = __heap_base;
+
+<span class="comment">// Useful function expose to javascript.</span>
+<span class="type">void</span>
+<span class="func" id="func-reset-memory">reset_memory</span>(<span class="type">void</span>){
+    _base_ptr = __heap_base;
+}
+
+<span class="comment">// The workhorse function.</span>
+<span class="comment">// Just a bump allocator.</span>
+<span class="keyword">static</span> <span class="keyword">inline</span>
+<span class="type">void</span>*<span class="keyword">_Nonnull</span>
+<span class="func" id="func-alloc">alloc</span>(<span class="type">size_t</span> size, <span class="type">size_t</span> alignment){
+    <span class="keyword">if</span>(alignment &gt; <span class="anonenum">SIZE_T_SIZE</span>)
+        alignment = <span class="anonenum">SIZE_T_SIZE</span>;
+    <span class="type">size_t</span> b = (<span class="type">size_t</span>)_base_ptr;
+    <span class="keyword">if</span>(b &amp; (alignment-<span class="literal">1</span>)){
+        b += alignment - (b &amp; (alignment-<span class="literal">1</span>));
+        _base_ptr = (<span class="type">unsigned</span> <span class="type">char</span>*)b;
+    }
+    <span class="type">void</span>* result = _base_ptr;
+    _base_ptr += size;
+    <span class="keyword">return</span> result;
+}
+
+<span class="type">void</span>*
+<span class="func">malloc</span>(<span class="type">size_t</span> size){
+    <span class="keyword">return</span> <span class="func">alloc</span>(size, <span class="literal">8</span>);
+}
+
+<span class="type">void</span>*
+<span class="func">calloc</span>(<span class="type">size_t</span> n_items, <span class="type">size_t</span> item_size){
+    <span class="type">void</span>* result = <span class="func">alloc</span>(n_items*item_size, item_size);
+    <span class="comment">// Provided by bulk memory extension.</span>
+    __builtin_memset(result, <span class="literal">0</span>, n_items*item_size);
+    <span class="keyword">return</span> result;
+}
+
+<span class="comment">// Just don't do anything.</span>
+<span class="comment">// You could improve this by maintaining a free list.</span>
+<span class="type">void</span>
+<span class="func">free</span>(<span class="type">void</span>*<span class="keyword">_Nullable</span> p){
+    (<span class="type">void</span>)p;
+}
+<span class="preproc">#</span><span class="preproc">pragma</span> clang assume_nonnull end
+</pre>
+</div>
+<div>
+<h2 id="strings">Strings</h2>
+<p>
+You'll probably want to pass strings back and forth between C and JavaScript.
+Unfortunately, there seems to be no performant way to do this - if you do this
+too much it will dominate the runtime of your code. I'll show the simplest way
+to do it.
+</p>
+<p>
+Basically, to pass JS strings to C, you have javascript malloc a buffer and
+then use the TextEncoder API to encode their utf-16 strings into utf-8 (this
+is half of what is slow and I can’t figure out a fast way to just copy the
+utf-16 string directly as it's not <b>that</b> hard to write your string
+processing on utf-16 (like utf-8, ascii characters are the same)).
+</p>
+<p>
+To pass C strings to JS, you call a function provided by your javascript code
+that takes a pointer + length pair. JavaScript can then decode that memory into
+a JS String using the TextDecoder API.
+</p>
+<p>
+Code demonstrating this:
+</p>
+<pre class="js">
+<span class="comment">//<span class="h" id="js-stringsjs"><b> js-strings.js</b></span></span>
+<span class="let">let</span> <span class="ident">mem</span>;
+<span class="let">let</span> <span class="ident">memview</span>;
+<span class="let">const</span> <span class="ident">decoder</span> = <span class="keyword">new</span> <span class="type">TextDecoder</span>();
+<span class="let">const</span> <span class="ident">encoder</span> = <span class="keyword">new</span> <span class="type">TextEncoder</span>();
+<span class="keyword">function</span> <span class="function">wasm_string_to_js</span>(<span class="ident">p</span>, <span class="ident">len</span>) {
+    <span class="let">const</span> <span class="ident">sub</span> = <span class="ident">mem</span>.<span class="function">subarray</span>(<span class="ident">p</span>, <span class="ident">p</span> + <span class="ident">len</span>);
+    <span class="let">const</span> <span class="ident">text</span> = <span class="ident">decoder</span>.<span class="function">decode</span>(<span class="ident">sub</span>);
+    <span class="keyword">return</span> <span class="ident">text</span>;
+}
+<span class="keyword">function</span> <span class="function">write4</span>(<span class="ident">p</span>, <span class="ident">val</span>) {
+    <span class="ident">memview</span>.<span class="function">setInt32</span>(<span class="ident">p</span>, <span class="ident">val</span>, <span class="literal">true</span>);
+}
+<span class="keyword">function</span> <span class="function">js_string_to_wasm</span>(<span class="ident">s</span>) {
+    <span class="let">const</span> <span class="ident">encoded</span> = <span class="ident">encoder</span>.<span class="function">encode</span>(<span class="ident">s</span>);
+    <span class="let">const</span> <span class="ident">p</span> = <span class="function">malloc</span>(<span class="ident">encoded</span>.<span class="ident">length</span> + <span class="literal">4</span>);
+    <span class="function">write4</span>(<span class="ident">p</span>, <span class="ident">encoded</span>.<span class="ident">length</span>);
+    <span class="ident">mem</span>.<span class="function">set</span>(<span class="ident">encoded</span>, <span class="ident">p</span> + <span class="literal">4</span>);
+    <span class="keyword">return</span> <span class="ident">p</span>;
+}
+</pre>
+<pre>
+<span class="comment">// js-strings.c</span>
+
+<span class="comment">// I've found wrapping APIs this way is easiest</span>
+<span class="comment">// for me.</span>
+<span class="keyword">typedef</span> <span class="keyword">struct</span> <span class="type" id="type-prefixedstring">PrefixedString</span> <span class="type" id="type-prefixedstring">PrefixedString</span>;
+<span class="keyword">struct</span> <span class="type">PrefixedString</span> {
+    <span class="type">size_t</span> length;
+    <span class="type">unsigned</span> <span class="type">char</span> data[];
+};
+
+<span class="keyword">static</span>
+<span class="type">void</span> <span class="func" id="func-some-api">some_api</span>(<span class="type">size_t</span> length, <span class="type">const</span> <span class="type">char</span>* txt);
+
+<span class="type">void</span>
+<span class="func" id="func-some-api-js">some_api_js</span>(<span class="type">PrefixedString</span>* ps){
+    <span class="func">some_api</span>(ps-&gt;length, (<span class="type">char</span>*)ps-&gt;data);
+}
+</pre>
+</div>
+<div>
+<h2 id="building-the-code">Building the Code</h2>
+<p>
+You'll end up with a commandline that looks like this (put in a Makefile).
+</p>
+<div>
+<pre>
+clang mycode_wasm.c -o mycode.wasm \
+--target=wasm32 --no-standard-libraries \
+-Wl,--export-all -Wl,--no-entry \
+-Wl,--allow-undefined -ffreestanding \
+-nostdinc -isystem Wasm \
+-mbulk-memory -mreference-types \
+-mmultivalue -mmutable-globals \
+-mnontrapping-fptoint -msign-ext \
+-O3
+</pre>
+</div>
+</div>
+<div>
+<h2 id="instantiating-the-code">Instantiating the Code</h2>
+<p>
+The MDN docs are pretty good, but for completeness, here is an example of how
+to instantiate a web assembly module in JavaScript.
+</p>
+<pre class="js">
+<span class="let">let</span> <span class="ident">wasm_inst</span>; <span class="comment">// WebAssembly.Instance</span>
+<span class="let">let</span> <span class="ident">mem</span>; <span class="comment">// Uint8Array</span>
+<span class="let">let</span> <span class="ident">memview</span>; <span class="comment">// DataView</span>
+<span class="let">let</span> <span class="ident">exports</span>; <span class="comment">// WebAssembly.Exports</span>
+<span class="let">const</span> <span class="ident">decoder</span> = <span class="keyword">new</span> <span class="type">TextDecoder</span>();
+<span class="let">const</span> <span class="ident">encoder</span> = <span class="keyword">new</span> <span class="type">TextEncoder</span>();
+
+<span class="keyword">function</span> <span class="function">wasm_string_to_js</span>(<span class="ident">p</span>, <span class="ident">len</span>){
+    <span class="let">const</span> <span class="ident">sub</span> = <span class="ident">mem</span>.<span class="function">subarray</span>(<span class="ident">p</span>, <span class="ident">p</span>+<span class="ident">len</span>);
+    <span class="let">const</span> <span class="ident">text</span> = <span class="ident">decoder</span>.<span class="function">decode</span>(<span class="ident">sub</span>);
+    <span class="keyword">return</span> <span class="ident">text</span>;
+}
+<span class="keyword">function</span> <span class="function">write4</span>(<span class="ident">p</span>, <span class="ident">val</span>){
+    <span class="ident">memview</span>.<span class="function">setInt32</span>(<span class="ident">p</span>, <span class="ident">val</span>, <span class="literal">true</span>);
+}
+<span class="keyword">function</span> <span class="function">js_string_to_wasm</span>(<span class="ident">s</span>){
+    <span class="let">const</span> <span class="ident">encoded</span> = <span class="ident">encoder</span>.<span class="function">encode</span>(<span class="ident">s</span>);
+    <span class="let">const</span> <span class="ident">p</span> = <span class="ident">exports</span>.<span class="function">malloc</span>(<span class="ident">encoded</span>.<span class="ident">length</span>+<span class="literal">4</span>);
+    <span class="function">write4</span>(<span class="ident">p</span>, <span class="ident">encoded</span>.<span class="ident">length</span>);
+    <span class="ident">mem</span>.<span class="function">set</span>(<span class="ident">encoded</span>, <span class="ident">p</span>+<span class="literal">4</span>);
+    <span class="keyword">return</span> <span class="ident">p</span>;
+}
+<span class="let">const</span> <span class="ident">imports</span> = {
+<span class="comment">    //<span class="h" id="js-stringsjs-javascript-functions-youre-exposing-to-c-go-here"><b> JavaScript functions you’re exposing to C go here.</b></span></span>
+    <span class="field">env</span>:{
+    },
+};
+<span class="function">fetch</span>(<span class="string">'some_wasm_path'</span>)
+  .<span class="function">then</span>(<span class="ident">response</span> =&gt; <span class="ident">response</span>.<span class="function">arrayBuffer</span>())
+  .<span class="function">then</span>(<span class="ident">bytes</span> =&gt; <span class="ident">WebAssembly</span>.<span class="function">instantiate</span>(<span class="ident">bytes</span>, <span class="ident">imports</span>))
+  .<span class="function">then</span>(<span class="ident">x</span>=&gt;{
+      <span class="ident">wasm_inst</span> = <span class="ident">x</span>.<span class="ident">instance</span>;
+      <span class="ident">exports</span> = <span class="ident">wasm_inst</span>.<span class="ident">exports</span>;
+      <span class="let">const</span> <span class="ident">m</span> = <span class="ident">exports</span>.<span class="ident">memory</span>;
+      <span class="ident">m</span>.<span class="function">grow</span>(<span class="literal">1024</span>);
+      <span class="ident">mem</span> = <span class="keyword">new</span> <span class="type">Uint8Array</span>(<span class="ident">m</span>.<span class="ident">buffer</span>);
+      <span class="ident">memview</span> = <span class="keyword">new</span> <span class="type">DataView</span>(<span class="ident">mem</span>.<span class="ident">buffer</span>);
+  });
+</pre>
+<p>
+The above example doesn’t end up doing much, but it will instantiate the C
+code and have you set up for passing strings back and forth.
+</p>
+</div>
+<div>
+<h2 id="debugging">Debugging</h2>
+<p>
+As far as I can tell, debugging wasm code is basically only supported by
+Chrome. You can step through the bytecode in Firefox and Safari, but to
+actually map the instructions to your original source code requires chrome + a
+chrome extension. You’ll need this <a href="https://chrome.google.com/webstore/detail/cc%20%20-devtools-support-dwa/pdcpmagijalfljmkmjngeonclgbbannb">extension</a>.
+</p>
+<p>
+You'll need to add the <tt>-g</tt> flag to your compiler command line. That
+instructs clang to include DWARF debug info in the wasm file.
+</p>
+<p>
+The extension looks up the source files by absolute path. This means that if
+you compile on one machine and debug on another, you’ll need to have the
+same file hierarchy on both machines.
+</p>
+</div>
+<div>
+<h2 id="profiling">Profiling</h2>
+<p>
+Profiling in the major browsers are all more or less the same - you can see how
+much time is spent at the granularity of function calls. This is somewhat
+unfortunate if you are used to native profiling tools which give you timings
+of each line or even drop down to the assembly level. So you won't be able to
+do things like optimize control flow. Hopefully this improves in the future.
+</p>
+<p>
+I personally prefer the Firefox profiler UI, but they are more or less
+equivalent.
+</p>
+</div>
+<div>
+<h2 id="demo">Demo</h2>
+<p>
+Below is a complete example of using WASM.
+</p>
+<p>
+This does very little, but shows all the necessary pieces.
+</p>
+<pre class="js">
+<span class="comment">//<span class="h" id="demojs"><b> demo.js</b></span></span>
+<span class="string">"use strict"</span>;
+<span class="let">let</span> <span class="ident">wasm_inst</span>; <span class="comment">// WebAssembly.Instance</span>
+<span class="let">let</span> <span class="ident">mem</span>; <span class="comment">// Uint8Array</span>
+<span class="let">let</span> <span class="ident">memview</span>; <span class="comment">// DataView</span>
+<span class="let">let</span> <span class="ident">exports</span>; <span class="comment">// WebAssembly.Exports</span>
+<span class="let">const</span> <span class="ident">decoder</span> = <span class="keyword">new</span> <span class="type">TextDecoder</span>();
+<span class="let">const</span> <span class="ident">encoder</span> = <span class="keyword">new</span> <span class="type">TextEncoder</span>();
+<span class="keyword">function</span> <span class="function">wasm_string_to_js</span>(<span class="ident">p</span>, <span class="ident">len</span>){
+    <span class="let">const</span> <span class="ident">sub</span> = <span class="ident">mem</span>.<span class="function">subarray</span>(<span class="ident">p</span>, <span class="ident">p</span>+<span class="ident">len</span>);
+    <span class="let">const</span> <span class="ident">text</span> = <span class="ident">decoder</span>.<span class="function">decode</span>(<span class="ident">sub</span>);
+    <span class="keyword">return</span> <span class="ident">text</span>;
+}
+<span class="keyword">function</span> <span class="function">write4</span>(<span class="ident">p</span>, <span class="ident">val</span>){
+    <span class="ident">memview</span>.<span class="function">setInt32</span>(<span class="ident">p</span>, <span class="ident">val</span>, <span class="literal">true</span>);
+}
+<span class="keyword">function</span> <span class="function">js_string_to_wasm</span>(<span class="ident">s</span>){
+    <span class="let">const</span> <span class="ident">encoded</span> = <span class="ident">encoder</span>.<span class="function">encode</span>(<span class="ident">s</span>);
+    <span class="let">const</span> <span class="ident">p</span> = <span class="ident">exports</span>.<span class="function">malloc</span>(<span class="ident">encoded</span>.<span class="ident">length</span>+<span class="literal">4</span>);
+    <span class="function">write4</span>(<span class="ident">p</span>, <span class="ident">encoded</span>.<span class="ident">length</span>);
+    <span class="ident">mem</span>.<span class="function">set</span>(<span class="ident">encoded</span>, <span class="ident">p</span>+<span class="literal">4</span>);
+    <span class="keyword">return</span> <span class="ident">p</span>;
+}
+<span class="let">const</span> <span class="ident">imports</span> = {
+    <span class="field">env</span>:{
+      <span class="field">write</span>: (<span class="ident">p</span>, <span class="ident">len</span>) =&gt; {
+        <span class="let">const</span> <span class="ident">s</span> = <span class="function">wasm_string_to_js</span>(<span class="ident">p</span>, <span class="ident">len</span>);
+        <span class="ident">document</span>.<span class="function">getElementById</span>(<span class="string">'scratch'</span>).<span class="ident">innerText</span>+=<span class="ident">s</span>;
+      },
+    },
+};
+<span class="ident">document</span>.<span class="function">addEventListener</span>(<span class="string">'DOMContentLoaded'</span>, ()=&gt;{
+<span class="comment">  //<span class="h" id="demojs-prog64-is-the-base64-version-of-the-wasm-file"><b> prog64 is the base64 version of the wasm file.</b></span></span>
+  <span class="let">const</span> <span class="ident">wasm_buffer</span> = <span class="type">Uint8Array</span>.<span class="function">from</span>(
+    <span class="function">atob</span>(<span class="ident">prog64</span>),
+    <span class="ident">c</span> =&gt; <span class="ident">c</span>.<span class="function">charCodeAt</span>(<span class="literal">0</span>)
+  ).<span class="ident">buffer</span>;
+  <span class="ident">WebAssembly</span>.<span class="function">compile</span>(<span class="ident">wasm_buffer</span>)
+    .<span class="function">then</span>(<span class="ident">x</span> =&gt; <span class="ident">WebAssembly</span>.<span class="function">instantiate</span>(<span class="ident">x</span>, <span class="ident">imports</span>))
+    .<span class="function">then</span>(<span class="ident">x</span> =&gt; {
+      <span class="ident">wasm_inst</span> = <span class="ident">x</span>;
+      <span class="ident">wasm_inst</span>.<span class="ident">exports</span>.<span class="ident">memory</span>.<span class="function">grow</span>(<span class="literal">24</span>);
+      <span class="ident">exports</span> = <span class="ident">wasm_inst</span>.<span class="ident">exports</span>;
+      <span class="ident">mem</span> = <span class="keyword">new</span> <span class="type">Uint8Array</span>(<span class="ident">exports</span>.<span class="ident">memory</span>.<span class="ident">buffer</span>);
+      <span class="ident">memview</span> = <span class="keyword">new</span> <span class="type">DataView</span>(<span class="ident">mem</span>.<span class="ident">buffer</span>);
+      <span class="let">let</span> <span class="ident">i</span> = <span class="literal">0</span>;
+      <span class="ident">document</span>.<span class="function">getElementById</span>(<span class="string">'click-me'</span>).<span class="ident">onclick</span>=()=&gt;{
+        <span class="ident">exports</span>.<span class="function">clicked</span>(<span class="ident">i</span>++);
+      };
+    });
+});
+</pre>
+<pre>
+<span class="comment">// example.c</span>
+<span class="preproc">#</span><span class="preproc">include</span> <span class="literal">"primitive_malloc.c"</span>
+
+<span class="keyword">extern</span> <span class="type">void</span> <span class="func" id="func-write">write</span>(<span class="type">const</span> <span class="type">char</span>*, <span class="type">size_t</span>);
+
+<span class="type">void</span> <span class="func" id="func-clicked">clicked</span>(<span class="type">int</span> i){
+    <span class="type">char</span> c[<span class="literal">2</span>] = {(i &amp;<span class="literal">0xf</span>)+ <span class="literal">'a'</span>, <span class="literal">'\n'</span>};
+    <span class="func">write</span>(c, <span class="keyword">sizeof</span> c);
+}
+</pre>
+<button id=click-me>Click Me</button>
+<pre id=scratch>
+</pre>
+
+</div>
+</article>
+<div>
+<h2 id="copyright">Copyright</h2>
+<p>
+All code in this article is released into the public domain.
+</p>
+</div>
+</body>
+</html>

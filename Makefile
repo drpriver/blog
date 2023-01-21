@@ -38,9 +38,13 @@ include creification/creification.mak
 # doctests in C
 include cdoctest/cdoctest.mak
 
+# compiling c to wasm
+include c-in-wasm/c-in-wasm.mak
+
 .PHONY: all
 all: $(PAGES)
 
 # rss
 feed.xml: $(PAGES)
 	python3 do_rss.py
+

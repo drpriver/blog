@@ -1,0 +1,346 @@
+::js
+  // This is kind of a beast, but here is an entire js syntax
+  // highlighter.
+  function colorize(line, state, outfunc, is_typescript, extra_types){
+    let str = line;
+    let i = 0; let c; let start = 0; let n = line.length;
+
+    const literals = " this super undefined null true false Infinity NaN arguments ";
+    let keywords = " " +
+            "break case catch continue debugger default delete do " +
+            "else finally for function if in instanceof new " +
+            "return switch this throw try typeof while with " +
+            "class enum import export extends super " +
+            "implements interface package private protected " +
+            "public static yield " +
+            "eval await ";
+    if(is_typescript){
+      keywords += "readonly type ";
+    }
+    const lets = " var const let ";
+    const builtins = " ctx JSON FileSystem node NodeType "
+    let types = " Array string boolean number Map any unknown void TextDecoder TextEncoder Uint8Array DataView ";
+    if(is_typescript && extra_types)
+      types += extra_types;
+    function parse_block_comment(){
+      state.in_block = 1;
+      for(; i < n - 1; i++){
+        if(str[i] == '*' && str[i+1] == '/'){
+          i += 2;
+          state.in_block = 0;
+          break;
+        }
+      }
+      if(state.in_block) i++;
+      let substr = str.slice(start, i);
+      outfunc(substr, 'comment');
+    }
+    function parse_ident(){
+      state.can_regex = 1;
+      while(i < n && is_word(str[i]))
+        i++;
+        let substr = str.slice(start, i);
+        let w = ' ' + substr + ' ';
+        if(substr.match(/\b[A-Z_]+\b/)){
+          outfunc(substr, 'enum');
+          return;
+        }
+        if(i < n && str[i] == ':'){
+          outfunc(substr, 'field');
+          return;
+        }
+        if(literals.indexOf(w) >= 0){
+          outfunc(substr, 'literal');
+          state.can_regex = 0;
+          return;
+        }
+        if(is_typescript && types.indexOf(w) >= 0){
+          outfunc(substr, 'type');
+          return;
+        }
+        if(builtins.indexOf(w) >= 0){
+          outfunc(substr, 'builtin');
+          return;
+        }
+        if(keywords.indexOf(w) >= 0){
+          outfunc(substr, 'keyword');
+          return;
+        }
+        if(lets.indexOf(w) >= 0){
+          outfunc(substr, 'let');
+          return;
+        }
+        if(i < n && str[i] == '('){
+          outfunc(substr, 'function');
+          return;
+        }
+
+        outfunc(substr, 'ident');
+        state.can_regex = 0;
+    }
+    function is_digit(c){
+      return c >= '0' && c <= '9';
+    }
+    function is_alpha(c){
+      return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+    }
+    function is_word(c){
+      return is_alpha(c) || is_digit(c) || c == '_' || c == '$';
+    }
+    if(state.in_block)
+      parse_block_comment();
+    for(;i < n;){
+      start = i;
+      c = str[i++];
+      switch(c){
+        case ' ':
+        case '\t':
+        case '\r':
+        case '\n':
+          outfunc(c, 'generic');
+          continue;
+        case '+':
+        case '-':
+          if(i < n && str[i] == c){
+            i++;
+            outfunc(c+c, 'generic');
+            continue;
+          }
+          state.can_regex = 1;
+          outfunc(c, 'generic');
+          continue;
+        case '/':
+          if(i < n && str[i] == '*'){
+            // block comment
+            i++;
+            parse_block_comment();
+            break;
+          }
+          if(i < n && str[i] == '/'){
+            // line comment
+            let substr = str.slice(start, str.length);
+            outfunc(substr, 'comment');
+            return;
+          }
+          if(state.can_regex){
+            // parse regex;
+            // Well, don't actually parse it, lol
+            // Accepts all valid regexes and many invalid regexes
+            // too!
+            while(i < n){
+              c = str[i++];
+              if(c == '\n') continue; // an error
+              if(c == '\\'){
+                if(i < n)
+                  i++;
+                continue;
+              }
+              if(c == '/'){
+                while(i < n && is_word(str[i]))
+                  i++;
+                break;
+              }
+            }
+            let substr = str.slice(start, i);
+            outfunc(substr, 'regex');
+            state.can_regex = 0;
+            break;
+          }
+          state.can_regex = 1;
+          outfunc(c, 'generic');
+          continue;
+        case '\'':
+        case '\"':
+        case '`':
+          // parse_string
+          {
+            let delim = c;
+            while(i < n){
+              c = str[i++];
+              if(c == '\\'){
+                if(i >= n)
+                  break;
+                i++;
+              }
+              else if(c == delim){
+                break;
+              }
+            }
+            outfunc(str.slice(start, i), 'string');
+          }
+          state.can_regex = 0;
+          break;
+        case '(':
+        case '[':
+        case '{':
+          state.can_regex = 1;
+          outfunc(c, 'generic');
+          continue;
+        case ')':
+        case ']':
+        case '{':
+          state.can_regex = 0;
+          outfunc(c, 'generic');
+          continue;
+        default:
+          if(is_digit(c)){
+            // parse number
+            while(i < n && (is_word(str[i]) || (str[i] == '.' && (i
+              == n -1 || str[i+1] != '.'))))
+              i++;
+            let substr = str.slice(start, i);
+            outfunc(substr, 'literal');
+            state.can_regex = 0;
+            break;
+          }
+          if(is_word(c) || c == '$'){
+              parse_ident();
+             break;
+          }
+          state.can_regex = 1;
+          outfunc(c, 'generic');
+          continue;
+      }
+    }
+    if(i == n) return;
+
+  }
+
+  const hierarchy = [];
+  let current_parent = null;
+
+  function highlight_js(line, state){
+    let result = "";
+    function outfunc(s, t){
+      switch(t){
+        case 'regex':
+          t = 'string';
+        case 'string':
+        case 'comment':
+        case 'literal':
+        case 'keyword':
+        case 'let':
+        case 'ident':
+        case 'builtin':
+        case 'enum':
+        case 'field':
+        // case 'function':
+          result += `<span class="${t}">${ctx.html_escape(s)}</span>`;
+          break;
+        default:
+          result += ctx.html_escape(s);
+          break;
+      }
+    }
+    colorize(line, state, outfunc);
+    return `<span class="generic">${result}</span>`;
+  }
+  function highlight_ts(line){
+    let result = "";
+    function outfunc(s, t){
+      switch(t){
+      case 'regex':
+        t = 'string';
+      case 'string':
+      case 'comment':
+      case 'string':
+      case 'comment':
+      case 'literal':
+      case 'keyword':
+      case 'let':
+      case 'ident':
+      case 'builtin':
+      case 'enum':
+      case 'type':
+      case 'function':
+      case 'field':
+        result += `<span class="${t}">${ctx.html_escape(s)}</span>`;
+        break;
+      default:
+        result += ctx.html_escape(s);
+        break;
+      }
+    }
+    colorize(line, {}, outfunc, true, "CtxType Node NodeType FileSystemT Attributes Classes ");
+    return result;
+  }
+  function process_comment(line, state){
+    let idx = line.indexOf('//');
+    let front = line.slice(0, idx+2);
+    let remainder = line.slice(idx+2, line.length);
+    let endscolon = line[line.length-1] == ':';
+    if(line.includes('--')){
+    }
+    else if(state.js_example){
+      remainder = highlight_js(remainder, state);
+    }
+    else if(endscolon || (remainder.trim().length && !state.seen_title)){
+      if(remainder.trim() == 'Example:'){
+        state.js_example = 1;
+      }
+      state.seen_title = 1;
+      if(!endscolon){
+        let id;
+        if(idx == 0){
+          current_parent = remainder;
+          hierarchy.push([remainder, []]);
+          id = ctx.kebab(remainder);
+        }
+        else {
+          if(hierarchy.length)
+          hierarchy[hierarchy.length-1][1].push(remainder);
+          id = ctx.kebab(current_parent+'-'+remainder);
+        }
+        remainder = `<span class="h" id="${id}"><b>${ctx.html_escape(remainder)}</b></span>`;
+      }
+      else
+        remainder = `<span class="h"><b>${ctx.html_escape(remainder)}</b></span>`;
+    }
+    else if(remainder.match(/\w+:/)){
+      let pieces = remainder.split(/(\w+:)/);
+      remainder = pieces[0] + `<span class="param"><b>${ctx.html_escape(pieces[1])}</b></span>` + ctx.html_escape(pieces[2]);
+    }
+    else {
+      remainder = ctx.html_escape(remainder);
+    }
+    let result = front + remainder;
+    // look for backtics
+    if(!state.js_example){
+      result = result.replace(/`(.*?)`/g, function(match, p1){
+        return `<a href="#${ctx.kebab(p1)}">${p1}</a>`;
+      });
+    }
+    return `<span class="comment">${result}</span>`
+  }
+  for(const node of ctx.select_nodes({type:NodeType.PRE, classes:['js']})){
+    const doc = ctx.make_node(NodeType.RAW);
+    node.parent.replace_child(node, doc);
+    doc.add_child('<pre class="js">');
+    let commentstate = null;
+    for(const child of node.children){
+      let line = child.header;
+      if(line.match(/^\s*\/\//)){
+        if(commentstate === null)
+          commentstate = {};
+        doc.add_child(process_comment(line, commentstate));
+      }
+      else{
+        commentstate = null;
+        doc.add_child(highlight_ts(line));
+      }
+    }
+    doc.add_child('</pre>');
+
+  }
+  //endjs
+::css
+  pre .let {
+    color: #5AB1FF;
+  }
+  pre .builtin {
+    color: #87FFAF;
+  }
+  pre .field {
+    color: #936;
+  }
+  /*endcss*/
