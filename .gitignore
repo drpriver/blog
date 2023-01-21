@@ -2,3 +2,4 @@ Depends
 *.html
 !docs/*.html
 .vimrc
+build
