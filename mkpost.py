@@ -72,6 +72,7 @@ PAGES+=docs/{name}.html
         p("    w.add_child('</pre>');")
         p('  }')
         p('  //endjs')
+        p('[Home | home]')
         p(name+'::title')
         today = datetime.date.today()
         d = today.day % 10
