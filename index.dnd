@@ -1,4 +1,7 @@
+::head
+  <link rel="alternate" type="application/rss+xml" title="RSS" href="/feed.xml">
 David's Blog::title
+
 
 Welcome to my blog!
 
