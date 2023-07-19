@@ -13,6 +13,16 @@ Feel free to check out one of the following articles:
 - [<tt>run(**vars(args))</tt> in Python | runvarsargs]
 - [Templates in C | ctemplates]
 
+Tools:
+- [Macwatch | macwatch]
+  - Simple filewatching utility for macs
+- [DrJson | drjson]
+  - liberal json parsing / query tool
+
+::links
+  macwatch = https://github.com/drpriver/macwatch
+  drjson = https://github.com/drpriver/drjson
+
 [rss]
 
 [Email Me]
