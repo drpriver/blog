@@ -7,6 +7,7 @@ Welcome to my blog!
 
 Feel free to check out one of the following articles:
 
+- [Hashtables in C | chashtables]
 - [C in Wasm | c-in-wasm]
 - [Doctests in C | cdoctests]
 - [<tt>_Generic</tt> for Type Reification in C | creification]
@@ -31,6 +32,7 @@ Tools:
   creification = creification.html
   runvarsargs = runvarsargs.html
   ctemplates = ctemplates.html
+  chashtables = c-hash-table.html
   cdoctests = cdoctest.html
   rss = feed.xml
   Email Me = mailto:david@davidpriver.com

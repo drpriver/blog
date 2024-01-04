@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>Hashtable in C</title>
+<style>
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  max-width: 68ch;
+  margin: auto;
+  margin-bottom: 40em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 12px;
+  background-color: #fff;
+  color: #000;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #333;
+    color: #fff;
+  }
+  a:visited {
+    color: #88f;
+  }
+  a {
+    color: #88f;
+  }
+}
+dt {
+  font-weight: bold;
+}
+pre {
+  padding-left: 2em;
+  padding-right: 1em;
+  padding-top: 1ex;
+  padding-bottom: 1ex;
+  background-color: #fdf6e3;
+  border-radius: 16px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  overflow-x: auto;
+  line-height: 125%;
+}
+tt {
+  background-color: #eee;
+  padding: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  pre {
+    background-color: #222;
+  }
+  tt {
+    background-color: #222;
+  }
+}
+pre .enum {
+  font-weight: bold;
+}
+pre .keyword {
+  color: #049407;
+}
+@media (prefers-color-scheme: dark) {
+  pre .keyword {
+    color: #24c427;
+  }
+}
+pre .comment {
+  color: #000;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  pre .comment {
+    color: #fff;
+  }
+}
+pre .literal {
+  color: #2aa198;
+}
+pre .type {
+  color: #de6e00;
+}
+pre .macro {
+  color: #66a;
+}
+pre .func, pre .function {
+  color: #213dde;
+}
+@media (prefers-color-scheme: dark) {
+  pre .func, pre .function {
+    color: #519dde;
+  }
+}
+pre .string {
+  color: #2aa198;
+}
+pre .preproc {
+  color: #777;
+}
+.quoted {
+  margin-left: 2em;
+  border-left: 2px solid grey;
+  padding-left: 8px;
+}
+pre .h {
+  font-weight: bold;
+}
+pre .param {
+  color: #6a6;
+}
+</style>
+</head>
+<body>
+<p>
+<a href="https://www.davidpriver.com">Home</a>
+</p>
+<h1 id="hashtable-in-c">Hashtable in C</h1>
+<p>
+<i><a href="mailto:david@davidpriver.com">David Priver</a>, Jan 3rd, 2024</i>
+</p>
+<h2>Contents</h2>
+<nav>
+<ul>
+<li><a href="#basic-reqirements">Basic Reqirements</a></li>
+<li><a href="#design-decisions">Design Decisions</a></li>
+<li><a href="#data-layout">Data Layout</a></li>
+<li><a href="#implementation">Implementation</a></li>
+<li><a href="#deletion">Deletion</a></li>
+<li><a href="#alterations">Alterations</a></li>
+<li><a href="#conclusion">Conclusion</a></li>
+<li><a href="#copyright">Copyright</a></li>
+</ul>
+</nav><article>
+
+<p>
+There's many times when the problem you are solving needs something like a map
+of keys to values with O(1) insertion and retrieval. C doesn't come with one
+already ready-for-use like more "modern" languages like Python, so you gotta
+roll up your sleeves and do it yourself.
+</p>
+<p>
+However, if you search around for "how
+to implement a hash table in C", you'll often find material that hashes to a
+fixed number of buckets and then has a linked list of items. This is slower than
+it needs to be and introduces complicated memory management that would be better
+avoided.
+</p>
+<p>
+So we'll implement our own instead. As a bonus, we'll add some extra properties
+like easy C-style iteration, ordered insertion and realloc-friendly memory
+usage.
+</p>
+<p>
+You could easily "<a href="ctemplates.html">templatize</a>" this code.
+</p>
+<div>
+<h2 id="basic-reqirements">Basic Reqirements</h2>
+<p>
+Your key type needs two basic properties:
+</p>
+<ul>
+<li>
+Equatible (can compare two keys for equality).
+</li>
+<li>
+Hashability (can map the key to a well-distributed number).
+</li>
+</ul>
+<p>
+Your value type can be whatever.
+</p>
+</div>
+<div>
+<h2 id="design-decisions">Design Decisions</h2>
+<ul>
+<li>
+Limit the number of items in the hashtable to pow(2, 31). This let's us use
+ 32 bit indexes which saves some memory.
+</li>
+<li>
+Single memory allocation.
+</li>
+</ul>
+</div>
+<div>
+<h2 id="data-layout">Data Layout</h2>
+<p>
+You'll (re-)allocate a block of memory such that it is laid out as follows:
+</p>
+<div>
+<pre>
+|       Items          |        Indexes        |
++---------+------------+-----------------------+
+|Occupied | Unoccupied | Indexes into occupied |
++---------+------------+-----------------------+
+
+|- count -|            |----- 2*capacity ------|
+|----- capacity -------|
+
+</pre>
+</div>
+<p>
+When an item is inserted, the key is hashed and used to start the search in
+the Indexes array. If it finds a valid index, it uses it to index into the
+Items array and compare the key there. If it's a match, then return the
+pointer to the value half of that item. Otherwise, keep going. If an invalid
+index is found, that means the key is not in the table already. Insert the key
+after the end of the occupied portion of the items array and increment count.
+Store this new index into the Indexes array where you found the invalid index.
+</p>
+<p>
+When the items array is filled, realloc the memory block (the enlarged Items
+array will now overlap with what was once the Indexes array). Invalidate all
+indexes in the new Indexes array and regenerate it from the Items array.
+</p>
+<p>
+In this design, there is just a single allocation, which makes de-allocating
+the table easier. Additionally, it is re-alloc friendly and if you can
+re-alloc in place, then no copying of the Items needs to be done, which can be
+a valuable property if you are allocating from a linear allocator.
+</p>
+<p>
+Another property is that the table remembers the order in which keys were
+inserted, which can be a useful property and makes debugging easier.
+</p>
+<p>
+Finally, you don't need to remember the special way of how to iterate over
+this table or have some iterator macros or construct. You iterate it like you
+would an array:
+</p>
+<pre>
+<span class="type">void</span> <span class="func" id="func-foo">foo</span>(<span class="type">void</span>){
+  <span class="keyword">for</span>(<span class="type">size_t</span> i = <span class="literal">0</span>; i &lt; table.count; i++){
+    <span class="type">Pair</span>* p = &amp;table.data[i];
+    <span class="comment">// do whatever with p</span>
+  }
+}
+</pre>
+</div>
+<div>
+<h2 id="implementation">Implementation</h2>
+<pre>
+<span class="preproc">#</span><span class="preproc">include</span> <span class="literal">&lt;stdint.h&gt;</span>
+<span class="preproc">#</span><span class="preproc">include</span> <span class="literal">&lt;stdlib.h&gt;</span>
+<span class="preproc">#</span><span class="preproc">include</span> <span class="literal">&lt;string.h&gt;</span>
+
+<span class="comment">// Define these as makes sense.</span>
+<span class="type">uint32_t</span> <span class="func" id="func-hash-key">hash_key</span>(<span class="type">const</span> <span class="type">KeyType</span>* key);
+<span class="type">_Bool</span> <span class="func" id="func-key-eq">key_eq</span>(<span class="type">const</span> <span class="type">KeyType</span>* a, <span class="type">const</span> <span class="type">KeyType</span>* b);
+
+<span class="comment">// You'll probably name these something else in your</span>
+<span class="comment">// implementation to avoid collisions.</span>
+<span class="keyword">typedef</span> <span class="keyword">struct</span> <span class="type" id="type-pair">Pair</span> <span class="type" id="type-pair">Pair</span>;
+<span class="keyword">struct</span> <span class="type">Pair</span> {
+  <span class="type">KeyType</span> key;
+  <span class="type">ValueType</span> value;
+};
+
+<span class="keyword">typedef</span> <span class="keyword">struct</span> <span class="type" id="type-table">Table</span> <span class="type" id="type-table">Table</span>;
+<span class="keyword">struct</span> <span class="type">Table</span> {
+  <span class="type">uint32_t</span> count, capacity;
+  <span class="type">Pair</span>* data;
+};
+
+<span class="keyword">enum</span> {<span class="enum" id="enum-table-empty-slot">TABLE_EMPTY_SLOT</span>=UINT32_MAX};
+
+<span class="comment">// Grows the table to the new size.</span>
+<span class="comment">// Returns 0 on success and non-zero on failure (usually</span>
+<span class="comment">// allocation failure).</span>
+<span class="type">int</span>
+<span class="func" id="func-grow-table">grow_table</span>(<span class="type">Table</span>* table, <span class="type">size_t</span> new_size);
+
+<span class="comment">// If key is already in the table, returns the pointer to</span>
+<span class="comment">// the corresponding value.</span>
+<span class="comment">// Otherwise, inserts the key into the table and returns a</span>
+<span class="comment">// pointer to the uninitialized value.</span>
+<span class="comment">// Returns NULL if the table needed to grow and that</span>
+<span class="comment">// failed.</span>
+<span class="type">ValueType</span>*
+<span class="func" id="func-table-getsert">table_getsert</span>(<span class="type">Table</span>* table, <span class="type">KeyType</span>* key);
+
+<span class="comment">// If key is in the table, returns the pointer to the</span>
+<span class="comment">// corresponding value.</span>
+<span class="comment">// Otherwise returns NULL.</span>
+<span class="type">ValueType</span>*
+<span class="func" id="func-table-has">table_has</span>(<span class="type">const</span> <span class="type">Table</span>* table, <span class="type">const</span> <span class="type">KeyType</span>* key);
+
+<span class="comment">// This is faster than modulo while preserving the same</span>
+<span class="comment">// properties if all the bits are equally well distributed.</span>
+<span class="comment">// Do *not* use identity hash with this.</span>
+<span class="type">uint32_t</span>
+<span class="func" id="func-fast-reduce32">fast_reduce32</span>(<span class="type">uint32_t</span> x, <span class="type">uint32_t</span> y){
+  <span class="keyword">return</span> ((<span class="type">uint64_t</span>)x * (<span class="type">uint64_t</span>)y) &gt;&gt; <span class="literal">32</span>;
+}
+
+<span class="type">int</span>
+<span class="func">grow_table</span>(<span class="type">Table</span>* table, <span class="type">size_t</span> new_cap){
+  <span class="type">size_t</span> cap = table-&gt;capacity;
+  <span class="keyword">if</span>(new_cap &lt;= cap) <span class="keyword">return</span> <span class="literal">0</span>;
+  <span class="keyword">if</span>(new_cap &gt; UINT32_MAX/<span class="literal">2</span>) <span class="keyword">return</span> <span class="literal">1</span>;
+
+  <span class="comment">// On a 32 bit system, you'll want to check</span>
+  <span class="comment">// for overflow here.</span>
+  <span class="type">size_t</span> new_size = new_cap*(<span class="keyword">sizeof</span>(<span class="type">Pair</span>)
+                    +<span class="literal">2</span>*<span class="keyword">sizeof</span>(<span class="type">uint32_t</span>));
+  <span class="type">char</span>* new_data = <span class="func">realloc</span>(table-&gt;data, new_size);
+  <span class="keyword">if</span>(!new_data) <span class="keyword">return</span> <span class="literal">1</span>;
+  table-&gt;data = (<span class="type">Pair</span>*)new_data;
+  table-&gt;capacity = (<span class="type">uint32_t</span>)new_cap;
+
+  <span class="type">size_t</span> offset = new_cap * <span class="keyword">sizeof</span>(<span class="type">Pair</span>);
+  <span class="type">uint32_t</span>* indexes = (<span class="type">uint32_t</span>*)(new_data+offset);
+  <span class="type">size_t</span> idx_cap = <span class="literal">2</span>*new_cap;
+  <span class="func">memset</span>(indexes, <span class="literal">0xff</span>, idx_cap * <span class="keyword">sizeof</span> *indexes);
+
+  <span class="type">Pair</span>* items = (<span class="type">Pair</span>*)new_data;
+  <span class="keyword">for</span>(<span class="type">size_t</span> i = <span class="literal">0</span>; i &lt; table-&gt;count; i++){
+    <span class="type">Pair</span>* p = &amp;items[i];
+    <span class="type">uint32_t</span> hash = <span class="func">hash_key</span>(&amp;p-&gt;key);
+    <span class="type">uint32_t</span> idx = <span class="func">fast_reduce32</span>(hash, (<span class="type">uint32_t</span>)idx_cap);
+    <span class="keyword">while</span>(indexes[idx] != <span class="enum">TABLE_EMPTY_SLOT</span>){
+      idx++;
+      <span class="keyword">if</span>(idx == idx_cap) idx = <span class="literal">0</span>;
+    }
+    indexes[idx] = i;
+  }
+  <span class="keyword">return</span> <span class="literal">0</span>;
+}
+
+<span class="type">ValueType</span>*
+<span class="func">table_getsert</span>(<span class="type">Table</span>* table, <span class="type">KeyType</span>* key){
+  <span class="keyword">if</span>(table-&gt;count == table-&gt;capacity){
+    <span class="type">size_t</span> new_cap;
+    <span class="keyword">if</span>(table-&gt;capacity)
+        new_cap = <span class="literal">2</span>*table-&gt;capacity;
+    <span class="keyword">else</span>
+        new_cap = <span class="literal">32</span>;
+    <span class="type">int</span> err = <span class="func">grow_table</span>(table, new_cap);
+    <span class="keyword">if</span>(err) <span class="keyword">return</span> NULL;
+  }
+  <span class="type">uint32_t</span> cap = table-&gt;capacity;
+  <span class="type">uint32_t</span> idx_cap = cap * <span class="literal">2</span>;
+  <span class="type">uint32_t</span> hash = <span class="func">hash_key</span>(key);
+  <span class="type">uint32_t</span> idx = <span class="func">fast_reduce32</span>(hash, idx_cap);
+
+  <span class="type">size_t</span> offset = cap * <span class="keyword">sizeof</span>(<span class="type">Pair</span>);
+  <span class="type">char</span>* data = (<span class="type">char</span>*)table-&gt;data;
+  <span class="type">uint32_t</span>* indexes = (<span class="type">uint32_t</span>*)(data + offset);
+  <span class="type">Pair</span>* items = table-&gt;data;
+  <span class="keyword">for</span>(;;){
+    <span class="type">uint32_t</span> i = indexes[idx];
+    <span class="keyword">if</span>(i == <span class="enum">TABLE_EMPTY_SLOT</span>){
+      indexes[idx] = table-&gt;count;
+      items[table-&gt;count].key = *key;
+      <span class="keyword">return</span> &amp;items[table-&gt;count++].value;
+    }
+
+    <span class="type">Pair</span>* p = &amp;items[i];
+    <span class="keyword">if</span>(<span class="func">key_eq</span>(&amp;p-&gt;key, key))
+      <span class="keyword">return</span> &amp;p-&gt;value;
+
+    idx++;
+    <span class="keyword">if</span>(idx == idx_cap) idx = <span class="literal">0</span>;
+  }
+}
+
+<span class="type">ValueType</span>*
+<span class="func">table_has</span>(<span class="type">const</span> <span class="type">Table</span>* table, <span class="type">const</span> <span class="type">KeyType</span>* key){
+  <span class="keyword">if</span>(!table-&gt;count) <span class="keyword">return</span> NULL; <span class="comment">// empty table</span>
+  <span class="type">uint32_t</span> cap = table-&gt;capacity;
+  <span class="type">uint32_t</span> idx_cap = cap * <span class="literal">2</span>;
+  <span class="type">uint32_t</span> hash = <span class="func">hash_key</span>(key);
+  <span class="type">uint32_t</span> idx = <span class="func">fast_reduce32</span>(hash, idx_cap);
+
+  <span class="type">size_t</span> offset = cap * <span class="keyword">sizeof</span>(<span class="type">Pair</span>);
+  <span class="type">char</span>* data = (<span class="type">char</span>*)table-&gt;data;
+  <span class="type">uint32_t</span>* indexes = (<span class="type">uint32_t</span>*)(data + offset);
+  <span class="type">Pair</span>* items = table-&gt;data;
+  <span class="keyword">for</span>(;;){
+    <span class="type">uint32_t</span> i = indexes[idx];
+    <span class="keyword">if</span>(i == <span class="enum">TABLE_EMPTY_SLOT</span>)
+      <span class="keyword">return</span> NULL;
+
+    <span class="type">Pair</span>* p = &amp;items[i];
+    <span class="keyword">if</span>(<span class="func">key_eq</span>(&amp;p-&gt;key, key))
+      <span class="keyword">return</span> &amp;p-&gt;value;
+
+    idx++;
+    <span class="keyword">if</span>(idx == idx_cap) idx = <span class="literal">0</span>;
+  }
+}
+</pre>
+</div>
+<div>
+<h2 id="deletion">Deletion</h2>
+<p>
+I didn't show to handle deleting items. Funnily enough I haven't found much
+need to delete things, but you have a few options.
+</p>
+<ul>
+<li>
+Somehow mark the pair as deleted (using a sentinel for the value part or a
+ book-keeping bitmask or whatever) and adjust the table growing code to shift
+ non-deleted items down. This makes iteration more complicated and growing
+ slower. This retains O(1) deletion.
+</li>
+<li>
+Eagerly shift the non-deleted items into place and fixup the indexes. This
+ makes deletion O(n).
+</li>
+</ul>
+<p>
+There's probably other options as well, but you can tune
+</p>
+</div>
+<div>
+<h2 id="alterations">Alterations</h2>
+<p>
+There's some ways you could change the above design.
+</p>
+<ul>
+<li>
+If hashing is expensive, and you want to avoid the re-hashing on grow, you
+ can store the hash in the Pairs.
+</li>
+<li>
+You could use 3 different allocations for the keys/values/indexes. There's
+ not really much point to doing this.
+</li>
+</ul>
+</div>
+<div>
+<h2 id="conclusion">Conclusion</h2>
+<p>
+It's certainly inconvenient to need to implement your own basic data
+structures in C, but in doing so you develop the skill to tailor them to your
+specific problem. And as shown above, you can get a functional hashtable in
+not very much code at all.
+</p>
+</div>
+</article>
+<div>
+<h2 id="copyright">Copyright</h2>
+<p>
+All code in this article is released into the public domain.
+</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,131 @@
+::css #import
+  ../../c.css
+::js
+  let wrapped = ctx.select_nodes({attributes:['wrapped']});
+  for(let w of wrapped){
+    w.insert_child(0, '<pre>');
+    w.add_child('</pre>');
+  }
+  //endjs
+[Home | home]
+
+Hashtable in C::title
+<i>[David Priver], Jan 3rd, 2024</i>
+
+Contents::h #noid
+::toc
+
+::raw
+  <article>
+
+There's many times when the problem you are solving needs something like a map
+of keys to values with O(1) insertion and retrieval. C doesn't come with one
+already ready-for-use like more "modern" languages like Python, so you gotta
+roll up your sleeves and do it yourself. 
+
+However, if you search around for "how
+to implement a hash table in C", you'll often find material that hashes to a
+fixed number of buckets and then has a linked list of items. This is slower than
+it needs to be and introduces complicated memory management that would be better
+avoided.
+
+So we'll implement our own instead. As a bonus, we'll add some extra properties
+like easy C-style iteration, ordered insertion and realloc-friendly memory
+usage.
+
+You could easily "[templatize]" this code.
+::links
+  templatize = ctemplates.html
+
+Basic Reqirements::md
+  Your key type needs two basic properties:
+
+  * Equatible (can compare two keys for equality).
+  * Hashability (can map the key to a well-distributed number).
+
+  Your value type can be whatever.
+
+Design Decisions::md
+  * Limit the number of items in the hashtable to pow(2, 31). This let's us use
+    32 bit indexes which saves some memory.
+  * Single memory allocation.
+
+Data Layout::md
+  You'll (re-)allocate a block of memory such that it is laid out as follows:
+
+  ::pre
+    |       Items          |        Indexes        |
+    +---------+------------+-----------------------+
+    |Occupied | Unoccupied | Indexes into occupied |
+    +---------+------------+-----------------------+
+
+    |- count -|            |----- 2*capacity ------|
+    |----- capacity -------|
+
+  When an item is inserted, the key is hashed and used to start the search in
+  the Indexes array. If it finds a valid index, it uses it to index into the
+  Items array and compare the key there. If it's a match, then return the
+  pointer to the value half of that item. Otherwise, keep going. If an invalid
+  index is found, that means the key is not in the table already. Insert the key
+  after the end of the occupied portion of the items array and increment count.
+  Store this new index into the Indexes array where you found the invalid index.
+
+  When the items array is filled, realloc the memory block (the enlarged Items
+  array will now overlap with what was once the Indexes array). Invalidate all
+  indexes in the new Indexes array and regenerate it from the Items array.
+
+  In this design, there is just a single allocation, which makes de-allocating
+  the table easier. Additionally, it is re-alloc friendly and if you can
+  re-alloc in place, then no copying of the Items needs to be done, which can be
+  a valuable property if you are allocating from a linear allocator.
+
+  Another property is that the table remembers the order in which keys were
+  inserted, which can be a useful property and makes debugging easier.
+
+  Finally, you don't need to remember the special way of how to iterate over
+  this table or have some iterator macros or construct. You iterate it like you
+  would an array:
+
+  ::raw @wrapped #import 
+    iter.c.html
+
+Implementation::md
+  ::raw @wrapped #import
+    ctable.c.html
+
+
+Deletion::md
+  I didn't show to handle deleting items. Funnily enough I haven't found much
+  need to delete things, but you have a few options.
+
+  * Somehow mark the pair as deleted (using a sentinel for the value part or a
+    book-keeping bitmask or whatever) and adjust the table growing code to shift
+    non-deleted items down. This makes iteration more complicated and growing
+    slower. This retains O(1) deletion.
+  * Eagerly shift the non-deleted items into place and fixup the indexes. This
+    makes deletion O(n).
+
+  There's probably other options as well, but you can tune
+
+Alterations::md
+  There's some ways you could change the above design.
+
+  * If hashing is expensive, and you want to avoid the re-hashing on grow, you
+    can store the hash in the Pairs.
+  * You could use 3 different allocations for the keys/values/indexes. There's
+    not really much point to doing this.
+
+Conclusion::md
+  It's certainly inconvenient to need to implement your own basic data
+  structures in C, but in doing so you develop the skill to tailor them to your
+  specific problem. And as shown above, you can get a functional hashtable in
+  not very much code at all.
+
+::raw
+  </article>
+Copyright::md
+  All code in this article is released into the public domain.
+
+::links
+  home = https://www.davidpriver.com
+  David Priver = mailto:david@davidpriver.com

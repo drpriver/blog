@@ -41,6 +41,9 @@ include cdoctest/cdoctest.mak
 # compiling c to wasm
 include c-in-wasm/c-in-wasm.mak
 
+# implementing a hash table in C
+include c-hash-table/c-hash-table.mak
+
 .PHONY: all
 all: $(PAGES)
 
