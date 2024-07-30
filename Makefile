@@ -44,10 +44,12 @@ include c-in-wasm/c-in-wasm.mak
 # implementing a hash table in C
 include c-hash-table/c-hash-table.mak
 
+# C macro reflection in D
+include C-macro-reflection-in-D/C-macro-reflection-in-D.mak
+
 .PHONY: all
 all: $(PAGES)
 
 # rss
 feed.xml: $(PAGES)
 	python3 do_rss.py
-

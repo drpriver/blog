@@ -1,0 +1,80 @@
+::css #import
+  ../../c.css
+::js
+  let wrapped = ctx.select_nodes({attributes:['wrapped']});
+  for(let w of wrapped){
+    w.insert_child(0, '<pre>');
+    w.add_child('</pre>');
+  }
+  //endjs
+[Home | home]
+C-macro-reflection-in-D::title
+<i>[David Priver], July 30th, 2024</i>
+
+I was reading Hacker News when I saw [the link to this article].
+I've been playing around with D lately and thought to myself "I bet D could do this as well". D added the ability to [import C files] (with [macros]) and has strong [reflection] capabilities as well.
+::links
+  the link to this article = https://jstrieb.github.io/posts/c-reflection-zig/
+  import c files = https://dlang.org/spec/importc.html
+  reflection = https://dlang.org/spec/traits.html#allMembers
+  macros = https://dlang.org/spec/importc.html#defines
+
+So here is my attempt at that:
+
+With a C file with macros:
+
+::pre
+  // macros.c
+  // #include <Windows.h>
+  // just #define the macros here for simplicity
+  #define WM_A 0x1
+  #define WM_B 0x2
+  #define WM_C 0x3
+And a D file to import the C file:
+
+::pre
+  // imports the C file "macros.c"
+  import macros;
+  import std.stdio: writeln;
+  void print_macro(int num){
+      switch(num){
+          // compile time foreach so we can generate cases
+          static foreach(m; __traits(allMembers, macros)){
+              static if(m.length > 3 && m[0..3] == "WM_"){
+                  case __traits(getMember, macros, m): 
+                      writeln(m, ": ", num);
+                      return;
+              }
+          }
+          default: 
+              writeln("unknown macro: ", num);
+              return;
+      }
+  }
+
+  void main(){
+      print_macro(0x1);
+      print_macro(0x2);
+      print_macro(0x3);
+      print_macro(0x4);
+  }
+Compile and run it:
+::pre
+  $ ldc2 mac.d -of mac
+  $ ./mac
+  WM_A: 1
+  WM_B: 2
+  WM_C: 3
+  unknown macro: 4
+::raw
+  <article>
+
+
+::raw
+  </article>
+Copyright::md
+  All code in this article is released into the public domain.
+
+::links
+  home = https://www.davidpriver.com
+  David Priver = mailto:david@davidpriver.com

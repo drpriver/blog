@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>C-macro-reflection-in-D</title>
+<style>
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  max-width: 68ch;
+  margin: auto;
+  margin-bottom: 40em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 12px;
+  background-color: #fff;
+  color: #000;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #333;
+    color: #fff;
+  }
+  a:visited {
+    color: #88f;
+  }
+  a {
+    color: #88f;
+  }
+}
+dt {
+  font-weight: bold;
+}
+pre {
+  padding-left: 2em;
+  padding-right: 1em;
+  padding-top: 1ex;
+  padding-bottom: 1ex;
+  background-color: #fdf6e3;
+  border-radius: 16px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  overflow-x: auto;
+  line-height: 125%;
+}
+tt {
+  background-color: #eee;
+  padding: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  pre {
+    background-color: #222;
+  }
+  tt {
+    background-color: #222;
+  }
+}
+pre .enum {
+  font-weight: bold;
+}
+pre .keyword {
+  color: #049407;
+}
+@media (prefers-color-scheme: dark) {
+  pre .keyword {
+    color: #24c427;
+  }
+}
+pre .comment {
+  color: #000;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  pre .comment {
+    color: #fff;
+  }
+}
+pre .literal {
+  color: #2aa198;
+}
+pre .type {
+  color: #de6e00;
+}
+pre .macro {
+  color: #66a;
+}
+pre .func, pre .function {
+  color: #213dde;
+}
+@media (prefers-color-scheme: dark) {
+  pre .func, pre .function {
+    color: #519dde;
+  }
+}
+pre .string {
+  color: #2aa198;
+}
+pre .preproc {
+  color: #777;
+}
+.quoted {
+  margin-left: 2em;
+  border-left: 2px solid grey;
+  padding-left: 8px;
+}
+pre .h {
+  font-weight: bold;
+}
+pre .param {
+  color: #6a6;
+}
+</style>
+</head>
+<body>
+<p>
+<a href="https://www.davidpriver.com">Home</a>
+</p>
+<h1 id="c-macro-reflection-in-d">C-macro-reflection-in-D</h1>
+<p>
+<i><a href="mailto:david@davidpriver.com">David Priver</a>, July 30th, 2024</i>
+</p>
+<p>
+I was reading Hacker News when I saw <a href="https://jstrieb.github.io/posts/c-reflection-zig/">the link to this article</a>.
+I've been playing around with D lately and thought to myself "I bet D could do this as well". D added the ability to <a href="https://dlang.org/spec/importc.html">import C files</a> (with <a href="https://dlang.org/spec/importc.html#defines">macros</a>) and has strong <a href="https://dlang.org/spec/traits.html#allMembers">reflection</a> capabilities as well.
+</p>
+<p>
+So here is my attempt at that:
+</p>
+<p>
+With a C file with macros:
+</p>
+<div>
+<pre>
+// macros.c
+// #include &lt;Windows.h&gt;
+// just #define the macros here for simplicity
+#define WM_A 0x1
+#define WM_B 0x2
+#define WM_C 0x3
+</pre>
+</div>
+<p>
+And a D file to import the C file:
+</p>
+<div>
+<pre>
+// imports the C file "macros.c"
+import macros;
+import std.stdio: writeln;
+void print_macro(int num){
+    switch(num){
+        // compile time foreach so we can generate cases
+        static foreach(m; __traits(allMembers, macros)){
+            static if(m.length &gt; 3 &amp;&amp; m[0..3] == "WM_"){
+                case __traits(getMember, macros, m):
+                    writeln(m, ": ", num);
+                    return;
+            }
+        }
+        default:
+            writeln("unknown macro: ", num);
+            return;
+    }
+}
+
+void main(){
+    print_macro(0x1);
+    print_macro(0x2);
+    print_macro(0x3);
+    print_macro(0x4);
+}
+</pre>
+</div>
+<p>
+Compile and run it:
+</p>
+<div>
+<pre>
+$ ldc2 mac.d -of mac
+$ ./mac
+WM_A: 1
+WM_B: 2
+WM_C: 3
+unknown macro: 4
+</pre>
+</div>
+<article>
+
+
+</article>
+<div>
+<h2 id="copyright">Copyright</h2>
+<p>
+All code in this article is released into the public domain.
+</p>
+</div>
+</body>
+</html>
