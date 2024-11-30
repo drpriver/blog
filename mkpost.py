@@ -5,7 +5,7 @@ import shutil
 from enum import Enum
 import datetime
 
-class Langs(str, Enum):
+class Lang(str, Enum):
     C = 'C'
     Python = 'python'
     Plain = 'plain'
@@ -17,9 +17,10 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('name', nargs='+')
     parser.add_argument('-l', '--lang', required=True, choices={'c', 'C', 'py', 'python', 'plain', 'D', 'd'})
+    parser.add_argument('-d', '--description')
 
     args = parser.parse_args()
-    args.lang = Langs({
+    args.lang = Lang({
             'c':'C',
             'py':'python',
             'd': 'D',
@@ -28,17 +29,18 @@ def main() -> None:
 
     run(**vars(args))
 
-def run(name:str, lang:Langs) -> None:
+def run(name:str, lang:Lang, description:str|None) -> None:
     name = name.replace(' ', '-')
     os.makedirs(name)
-    L = Langs
     {
-        L.C:      ctemplate,
-        L.Python: pytemplate,
-        L.Plain:  plaintemplate,
-        L.D: dtemplate,
+        Lang.C:      ctemplate,
+        Lang.Python: pytemplate,
+        Lang.Plain:  plaintemplate,
+        Lang.D: dtemplate,
     }[lang](name)
     with open('Makefile', 'a') as fp:
+        if description:
+            print(f' # {description}', file=fp)
         print(f'\ninclude {name}/{name}.mak', file=fp)
     try:
         with open('.vimrc', 'r') as fp:
@@ -107,7 +109,7 @@ def dtemplate(name:str) -> None:
 
 build/{name}/%.c.html: {name}/%.c | build/{name}
 \tpython3 -m cdoc $< -o $@
-build/{name}/%.d.html: {name}/%.c | build/{name}
+build/{name}/%.d.html: {name}/%.d | build/{name}
 \tpython3 -m cdoc $< -o $@
 build/{name}/%.h.html: {name}/%.h | build/{name}
 \tpython3 -m cdoc $< -o $@

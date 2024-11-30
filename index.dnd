@@ -7,6 +7,7 @@ Welcome to my blog!
 
 Feel free to check out one of the following articles:
 
+- [Vim macros are overrated | vim-macros]
 - [C macro reflection in D | cmacro]
 - [Hashtables in C | chashtables]
 - [C in Wasm | c-in-wasm]
@@ -39,6 +40,7 @@ Tools:
   Email Me = mailto:david@davidpriver.com
   C in Wasm = c-in-wasm.html
   cmacro = C-macro-reflection-in-D.html
+  vim-macros = vim-macros-overrated.html
 ::css
   :root {
     color-scheme: light dark;

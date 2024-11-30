@@ -1,0 +1,100 @@
+::css #import
+  ../c.css
+::js
+  let wrapped = ctx.select_nodes({attributes:['wrapped']});
+  for(let w of wrapped){
+    w.insert_child(0, '<pre>');
+    w.add_child('</pre>');
+  }
+  //endjs
+[Home | home]
+
+VIM Macros are Overrated::title
+<i>[David Priver], Nov 29th, 2024</i>
+::raw
+  <article>
+
+Macros::md
+  I'm a big VIM user and enjoy working in it, both professionally and
+  recreationally. One of vim's nice features is the ability to record macros into
+  a register and then replay it. As the macros can include motion, you can set
+  them up so that they can be easily repeated and use a count modifier, like
+  <tt>22@w</tt> to apply them multiple times. Do <tt>:h complex-repeat</tt> to
+  learn more.
+
+  However, there are some drawbacks to VIM macros. If you have a long or
+  complicated sequence of actions, it can be error prone to record the exact
+  macro needed to do what you want. They are stored in normal registers, so you
+  can paste them into a buffer, edit them and then yank them back into a
+  register, but that is pretty annoying and they quickly get unreadable.
+
+  Another common pitfall is you realize after executing the macro that you need
+  some small thing changed or some additional transform. You then have to either
+  edit the macro or record a new one from scratch. Do this a few times and you'll
+  find you spent more time trying to record the perfect macro than just doing the
+  text operation. And good luck debugging it if your macro isn't quite right.
+
+  If only we could write the text transforms as code. Wait a minute...
+
+Filters::md
+  Vim also has the feature that you can shell out to arbitrary programs,
+  writing to their stdin and reading from their stdout. You can feed them an
+  entire buffer or a selection of a buffer. The input lines are then replaced
+  with whatever the program wrote to stdout. Vim refers to these as "filters"
+  and invoke them with filter commands. Do <tt>:h filter</tt> to learn more.
+
+  In my experience, a better alternative to recording a complicated macro is to
+  just write a simple python script as the filter program.
+  As we are just writing normal code, this means it can be
+  arbitrarily complicated and you could even do syntactic/semantic analysis for
+  your custom text transforms. Additionally, it's just normal code instead of
+  weird editor commands so you can easily test and debug the transform if it's
+  getting hairy, write functions, break it up into multiple statements, etc.
+
+An Example::md
+  Recently I was working with some C code where I needed to generate an X-macro
+  from a list of names. Example input would look like:
+
+  ::pre
+    Potion of Healing
+    Wand of Fireball
+    Magic Sword
+    ...  etc ...
+
+  I would like this to be converted to an X-macro, defining various forms of the names:
+
+  ::pre
+    // #define X(UPPER, Title, snake, string)
+    #define XNames(X) \
+      X(POTION_OF_HEALING, Potion_of_Healing, potion_of_healing, "Potion of Healing") \
+      X(WAND_OF_FIREBALL, Wand_of_Fireball, wand_of_fireball, "Wand of Fireball") \
+      X(MAGIC_SWORD, Magic_Sword, magic_sword, "Magic Sword") \
+      ... etc ...
+
+  You can do this with vim commands and macros, but it is not easy. But behold, the simple
+  python script that does this conversion:
+
+  ::pre .python
+    import sys
+    for line in sys.stdin:
+        l = line.strip()
+        s = l.replace(' ', '_')
+        print(f'    X({s.upper()}, {s}, {s.lower()}, "{l}") \\')
+
+  Simple, easy to understand code. You can debug it, you can throw examples at
+  it, whatever. I usually name these little scripts f.py in my working directly
+  and invoke them with <tt>:'<,'>!python3 f.py</tt>.
+
+  That's it! When you find yourself trying to setup a complicated macro, stop
+  and think if it would be easier to express it as a little script that
+  processes stdin instead. Most of the time, the answer is yes.
+
+Copyright::md
+  All code in this article is released into the public domain.
+
+::links
+  home = https://www.davidpriver.com
+  David Priver = mailto:david@davidpriver.com
+
+::import
+  highlight-python.dnd

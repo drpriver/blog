@@ -47,6 +47,9 @@ include c-hash-table/c-hash-table.mak
 # C macro reflection in D
 include C-macro-reflection-in-D/C-macro-reflection-in-D.mak
 
+# Use filters instead of macros
+include vim-macros-overrated/vim-macros-overrated.mak
+
 .PHONY: all
 all: $(PAGES)
 

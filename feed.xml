@@ -2727,5 +2727,262 @@ All code in this article is released into the public domain.
 &lt;/div&gt;
 &lt;/body&gt;
 &lt;/html&gt;
-</description><pubDate>Tue, 30 Jul 2024 20:43:23 GMT</pubDate><link>https://www.davidpriver.com/C-macro-reflection-in-D.html</link><author>david@davidpriver.com</author></item></channel>
+</description><pubDate>Tue, 30 Jul 2024 20:43:23 GMT</pubDate><link>https://www.davidpriver.com/C-macro-reflection-in-D.html</link><author>david@davidpriver.com</author></item><item><title>VIM Macros are Overrated</title><description>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+&lt;meta charset="UTF-8"&gt;
+&lt;meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"&gt;
+&lt;title&gt;VIM Macros are Overrated&lt;/title&gt;
+&lt;style&gt;
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  max-width: 68ch;
+  margin: auto;
+  margin-bottom: 40em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 12px;
+  background-color: #fff;
+  color: #000;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #333;
+    color: #fff;
+  }
+  a:visited {
+    color: #88f;
+  }
+  a {
+    color: #88f;
+  }
+}
+dt {
+  font-weight: bold;
+}
+pre {
+  padding-left: 2em;
+  padding-right: 1em;
+  padding-top: 1ex;
+  padding-bottom: 1ex;
+  background-color: #fdf6e3;
+  border-radius: 16px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  overflow-x: auto;
+  line-height: 125%;
+}
+tt {
+  background-color: #eee;
+  padding: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  pre {
+    background-color: #222;
+  }
+  tt {
+    background-color: #222;
+  }
+}
+pre .enum {
+  font-weight: bold;
+}
+pre .keyword {
+  color: #049407;
+}
+@media (prefers-color-scheme: dark) {
+  pre .keyword {
+    color: #24c427;
+  }
+}
+pre .comment {
+  color: #000;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  pre .comment {
+    color: #fff;
+  }
+}
+pre .literal {
+  color: #2aa198;
+}
+pre .type {
+  color: #de6e00;
+}
+pre .macro {
+  color: #66a;
+}
+pre .func, pre .function {
+  color: #213dde;
+}
+@media (prefers-color-scheme: dark) {
+  pre .func, pre .function {
+    color: #519dde;
+  }
+}
+pre .string {
+  color: #2aa198;
+}
+pre .preproc {
+  color: #777;
+}
+.quoted {
+  margin-left: 2em;
+  border-left: 2px solid grey;
+  padding-left: 8px;
+}
+pre .h {
+  font-weight: bold;
+}
+pre .param {
+  color: #6a6;
+}
+.python .control {
+  color: rgb(200, 100, 0);
+}
+.python .comment {
+  color: grey;
+}
+.python .None {
+  color: purple;
+}
+.python .string {
+  color: rgb(220, 0, 0);
+}
+.python .number {
+  color: teal;
+}
+.python .import {
+  color: purple;
+}
+/*endcss*/
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;p&gt;
+&lt;a href="https://www.davidpriver.com"&gt;Home&lt;/a&gt;
+&lt;/p&gt;
+&lt;h1 id="vim-macros-are-overrated"&gt;VIM Macros are Overrated&lt;/h1&gt;
+&lt;p&gt;
+&lt;i&gt;&lt;a href="mailto:david@davidpriver.com"&gt;David Priver&lt;/a&gt;, Nov 29th, 2024&lt;/i&gt;
+&lt;/p&gt;
+&lt;article&gt;
+
+&lt;div&gt;
+&lt;h2 id="macros"&gt;Macros&lt;/h2&gt;
+&lt;p&gt;
+I'm a big VIM user and enjoy working in it, both professionally and
+recreationally. One of vim's nice features is the ability to record macros into
+a register and then replay it. As the macros can include motion, you can set
+them up so that they can be easily repeated and use a count modifier, like
+&lt;tt&gt;22@w&lt;/tt&gt; to apply them multiple times. Do &lt;tt&gt;:h complex-repeat&lt;/tt&gt; to
+learn more.
+&lt;/p&gt;
+&lt;p&gt;
+However, there are some drawbacks to VIM macros. If you have a long or
+complicated sequence of actions, it can be error prone to record the exact
+macro needed to do what you want. They are stored in normal registers, so you
+can paste them into a buffer, edit them and then yank them back into a
+register, but that is pretty annoying and they quickly get unreadable.
+&lt;/p&gt;
+&lt;p&gt;
+Another common pitfall is you realize after executing the macro that you need
+some small thing changed or some additional transform. You then have to either
+edit the macro or record a new one from scratch. Do this a few times and you'll
+find you spent more time trying to record the perfect macro than just doing the
+text operation. And good luck debugging it if your macro isn't quite right.
+&lt;/p&gt;
+&lt;p&gt;
+If only we could write the text transforms as code. Wait a minute...
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="filters"&gt;Filters&lt;/h2&gt;
+&lt;p&gt;
+Vim also has the feature that you can shell out to arbitrary programs,
+writing to their stdin and reading from their stdout. You can feed them an
+entire buffer or a selection of a buffer. The input lines are then replaced
+with whatever the program wrote to stdout. Vim refers to these as "filters"
+and invoke them with filter commands. Do &lt;tt&gt;:h filter&lt;/tt&gt; to learn more.
+&lt;/p&gt;
+&lt;p&gt;
+In my experience, a better alternative to recording a complicated macro is to
+just write a simple python script as the filter program.
+As we are just writing normal code, this means it can be
+arbitrarily complicated and you could even do syntactic/semantic analysis for
+your custom text transforms. Additionally, it's just normal code instead of
+weird editor commands so you can easily test and debug the transform if it's
+getting hairy, write functions, break it up into multiple statements, etc.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="an-example"&gt;An Example&lt;/h2&gt;
+&lt;p&gt;
+Recently I was working with some C code where I needed to generate an X-macro
+from a list of names. Example input would look like:
+&lt;/p&gt;
+&lt;div&gt;
+&lt;pre&gt;
+Potion of Healing
+Wand of Fireball
+Magic Sword
+...  etc ...
+
+&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;
+I would like this to be converted to an X-macro, defining various forms of the names:
+&lt;/p&gt;
+&lt;div&gt;
+&lt;pre&gt;
+// #define X(UPPER, Title, snake, string)
+#define XNames(X) \
+  X(POTION_OF_HEALING, Potion_of_Healing, potion_of_healing, "Potion of Healing") \
+  X(WAND_OF_FIREBALL, Wand_of_Fireball, wand_of_fireball, "Wand of Fireball") \
+  X(MAGIC_SWORD, Magic_Sword, magic_sword, "Magic Sword") \
+  ... etc ...
+
+&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;
+You can do this with vim commands and macros, but it is not easy. But behold, the simple
+python script that does this conversion:
+&lt;/p&gt;
+&lt;pre class="python"&gt;
+&lt;span class="import"&gt;import&lt;/span&gt; sys
+&lt;span class="control"&gt;for&lt;/span&gt; line &lt;span class="keyword"&gt;in&lt;/span&gt; sys.stdin:
+    l = line.strip()
+    s = l.replace(&lt;span class="string"&gt;' '&lt;/span&gt;, &lt;span class="string"&gt;'_'&lt;/span&gt;)
+    print(f&lt;span class="string"&gt;'    X({s.upper()}, {s}, {s.lower()}, "{l}") \\'&lt;/span&gt;)
+
+&lt;/pre&gt;
+&lt;p&gt;
+Simple, easy to understand code. You can debug it, you can throw examples at
+it, whatever. I usually name these little scripts f.py in my working directly
+and invoke them with &lt;tt&gt;:'&amp;lt;,'&amp;gt;!python3 f.py&lt;/tt&gt;.
+&lt;/p&gt;
+&lt;p&gt;
+That's it! When you find yourself trying to setup a complicated macro, stop
+and think if it would be easier to express it as a little script that
+processes stdin instead. Most of the time, the answer is yes.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="copyright"&gt;Copyright&lt;/h2&gt;
+&lt;p&gt;
+All code in this article is released into the public domain.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</description><pubDate>Sat, 30 Nov 2024 05:45:25 GMT</pubDate><link>https://www.davidpriver.com/vim-macros-overrated.html</link><author>david@davidpriver.com</author></item></channel>
 </rss>
