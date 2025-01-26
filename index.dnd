@@ -16,7 +16,7 @@ Feel free to check out one of the following articles:
 - [<tt>run(**vars(args))</tt> in Python | runvarsargs]
 - [Templates in C | ctemplates]
 
-Tools:
+Tools/Libs:
 - [Macwatch | macwatch]
   - Simple filewatching utility for macs
 - [DrJson | drjson]
