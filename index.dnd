@@ -21,6 +21,8 @@ Tools:
   - Simple filewatching utility for macs
 - [DrJson | drjson]
   - liberal json parsing / query tool
+- [DrSpread | drspread]
+  - Spreadsheet evaluation engine library and spreadsheet tui app.
 
 Games:
 - [Dragon Mountain | dragonmountain]
@@ -29,6 +31,7 @@ Games:
 ::links
   macwatch = https://github.com/drpriver/macwatch
   drjson = https://github.com/drpriver/drjson
+  drspread = https://github.com/drpriver/drspread
   dragonmountain = games/dragonmountain.html
 
 [rss]
