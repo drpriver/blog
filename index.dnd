@@ -23,6 +23,8 @@ Tools/Libs:
   - liberal json parsing / query tool
 - [DrSpread | drspread]
   - Spreadsheet evaluation engine library and spreadsheet tui app.
+- [DrMd | drmd]
+  - Simplified md parsing for in-page rendering of user-provided md
 
 Games:
 - [Dragon Mountain | dragonmountain]
@@ -32,6 +34,7 @@ Games:
   macwatch = https://github.com/drpriver/macwatch
   drjson = https://github.com/drpriver/drjson
   drspread = https://github.com/drpriver/drspread
+  drmd = https://github.com/drpriver/drmd
   dragonmountain = games/dragonmountain.html
 
 [rss]
