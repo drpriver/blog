@@ -17,6 +17,9 @@ Feel free to check out one of the following articles:
 - [Templates in C | ctemplates]
 
 Tools/Libs:
+- [DrC | drc]
+  - C2y interpreter, with REPL and many extensions. Can interpret itself.
+    C "scripting" with bindingless FFI.
 - [Macwatch | macwatch]
   - Simple filewatching utility for macs
 - [DrJson | drjson]
@@ -25,17 +28,31 @@ Tools/Libs:
   - Spreadsheet evaluation engine library and spreadsheet tui app.
 - [DrMd | drmd]
   - Simplified md parsing for in-page rendering of user-provided md
+- [DndC | dndc]
+  - Compiler for the "dnd" document format, which was developed for
+    writing/managing notes for tabletop rpgs. Includes embedded
+    js scripting via quickjs. This blog is written with it.
+- [imgpgr | imgpgr]
+  - Terminal image viewing utility via Kitty graphics protocol.
 
 Games:
 - [Dragon Mountain | dragonmountain]
   - Semi-puzzly dungeon crawling board game
 
+WebApps:
+- [Krug's Basement | krugsbasement]
+  - VTT (Virtual Tabletop) for playing tabletop rpgs.
+
 ::links
+  drc = https://github.com/drpriver/drc
   macwatch = https://github.com/drpriver/macwatch
   drjson = https://github.com/drpriver/drjson
   drspread = https://github.com/drpriver/drspread
   drmd = https://github.com/drpriver/drmd
   dragonmountain = games/dragonmountain.html
+  krugsbasement = https://krugsbasement.com
+  dndc = https://github.com/drpriver/dndc
+  imgpgr = https://github.com/drpriver/imgpgr
 
 [rss]
 
