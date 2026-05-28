@@ -3557,7 +3557,7 @@ decades of boilerplate and manual metadata synchronization.
 &lt;p&gt;
 The next step in the evolution is to setup &lt;tt&gt;constexpr&lt;/tt&gt; function params
 to allow compile-time metaprogramming with &lt;tt&gt;_Type&lt;/tt&gt;, with template-like
-results without not adding a new metalanguage.
+results without adding a new metalanguage.
 &lt;/p&gt;
 &lt;p&gt;
 Another path to follow is to expose C23 attributes on struct fields for user-defined metadata,
