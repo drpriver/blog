@@ -1,0 +1,243 @@
+::css #import
+  ../../c2.css
+::js
+  let wrapped = ctx.select_nodes({attributes:['wrapped']});
+  for(let w of wrapped){
+    w.insert_child(0, '<pre>');
+    w.add_child('</pre>');
+  }
+  //endjs
+[Home | home]
+adding-reflection-to-C::title
+<i>[David Priver], May 27th, 2026</i>
+
+::raw
+  <article>
+
+Reflection in programming is the ability for a program to introspect its own
+datastructures and procedures, either at compile time or at run time. This is a
+key building block of metaprogramming. This is frequently used for
+automatically generating serialization and deserialization code, in-app
+debuggers and structure explorers.
+
+C, as a venerable and minimalistic language, offers no such capability. As a
+result, C programmers are forced to resort to a few options:
+
+1. Duplicate the metadata in parallel structures that need to be kept up to
+   date with the real data structure definitions.
+2. Stop using the native syntax for declaring structures/enums/etc. and instead
+   do it with the primitive metaprogramming of the C preprocessor. Instead of
+   directly declaring a structure, add a new X-macro that can be used to
+   generate the struct and also its type info.
+3. Stop using the C language at all for declaring your structures and instead
+   use an external tool to generate code, such as ad-hoc scripts or some kind of
+   IDL.
+4. Keep declaring your types in C, write a C parser yourself to get that
+   information into your hands and generate the needed reflection data or as
+   inputs to codegen.
+
+I've tried all of these options. They all have severe downsides.
+
+For now we will focus on runtime type info. The goal is to have a datastructure like:
+
+::raw @wrapped #import
+  typeinfo.h.html
+
+This is greatly simplified: in practice you'd want info for arrays, unions,
+function types, pointers, etc.
+
+Option 1: Hand-maintained Parallel Type Info::md
+  Example::raw @wrapped #import
+    option-1.c.html
+
+  Option 1 is error-prone, laborious and hard to keep in sync, although it does
+  give you the most control and the ability to customize things (such as
+  serializing simple structs as a json array instead of json objects for vector
+  types, using exactly the right allocator). This option is actually not as bad
+  as people think, but it does take the joy out of programming.
+
+  The real drawback is if you get things wrong, the compiler won't help. For
+  example, if you use bitfields (and contrary to popular belief, you should as
+  they lead to significant size savings, with better syntax than
+  <tt>#define</tt> flags and it's not actually hard to get portable bitfields
+  between compilers, but that's a different blog post), compilers don't offer
+  bitfield offset or width intrinsics so you have to maintain those by hand,
+  which means you can end up reading or writing the wrong bits. (Did you notice
+  that <tt>is_foo</tt> has the wrong <tt>bf_offset</tt>?)
+
+  Usage::raw @wrapped #import
+    usage-1.c.html
+
+Option 2: Use X-macros to Declare Types::md
+  Example::raw @wrapped #import
+    option-2.c.html
+
+
+  Option 2 is a mess. You can't forget to add serialization code for a field,
+  but these macros are getting nasty and we don't even support pointers,
+  arrays, unions, etc. We could refactor things a bit, but it's pretty clear
+  this is the wrong direction.
+
+  Usage::raw @wrapped #import
+    usage-2.c.html
+
+Option 3: Codegen::md
+  A lot of projects end up here. Maintaining by hand leads to too many
+  uncheckable bugs and the macro abuse is too ugly.
+  Sometimes you need to conform to an external schema or protocol anyway, so
+  that the structures are shared between different projects, processors,
+  languages, etc.
+  If your problem needs an IDL or external protocol, then go for it.
+  It's a well-trod path and is better than trying to expose your internal types
+  as the protocol.
+
+  There are drawbacks:
+    - You're no longer programming C. You're designing your data types in some
+      other language.
+    - If you use an IDL, they are not intended to be core data types of your
+      programs, they are just for interfacing.
+    - You now need build system integration. C build systems tend to suck for
+      some reason (unless you write it yourself in C), so this adds extra pain.
+
+  That makes sense for an IDL, but you will also sometimes see people
+  generating internal-only types in python scripts or jinja2 templates.
+  At that point, you are writing a bad compiler.
+
+Option 4: Write a C compiler::md
+  Let's look back at the type we're trying to generate type info for:
+  ::raw @wrapped #import
+    option-4.c.html
+
+  This isn't that bad right? We don't need to parse every single possible type,
+  just the ones in our program and we could write it in a sane fashion.
+  We've already accepted that we need a build step (C is too anemic).
+
+  It's not that hard to write a C tokenizer and we can just ignore macros/includes
+  and hardcode basic types. So it can end up being a reasonable solution to
+  pattern match on tokens to get the data you need.
+
+  Or, you might just end up using something like libclang to parse your code
+  and extract the info you need (although libclang is slow and hard to use and
+  now you depend on LLVM for your C project just to parse and write json).
+  Either way, you end up with a custom C compiler step before your real C
+  compiler invocation.
+
+  Sadly, the compiler literally has the information we need (it must in order
+  to layout structs and type check the code), but it won't give it to us and we
+  end up having to re-implement a C compiler ourselves.
+
+Extending C::md
+  Well I ended up at option 4 and decided that it wouldn't be <i>that</i> hard to go
+  all the way.  Despite what people say, the C preprocessor is rather simple (I
+  think they get confused by the blue paint algorithm) and is actually kind of
+  elegant once you realize that it is not a text-to-text transformer: it turns
+  text into CPP tokens and then into C tokens. It doesn't turn back into text.
+
+  So I took my little C tokenizer and added a CPP tokenizer in front of it.
+  Then I got includes, macros, etc. working. Reworked the C tokenizer to be a
+  conversion from the CPP tokenizer.
+  Then I got declaration and declarator parsing working. Then expression
+  parsing. Then to see if it was all correct I started tree-walking
+  interpreting the code and calling into native functions with libffi.
+  And before I knew it I had a C interpreter that could interpret itself.
+
+  At that point I literally had what I wanted - that internal type info that the
+  compiler had. So why not, I added a new type to C: <tt>_Type</tt>.
+
+  ::pre.C
+    #include <stdint.h>
+    #include <stddef.h>
+    struct Foo { 
+        int32_t x, y; 
+        uint32_t is_baz: 1,
+                 is_bar: 1,
+                 is_foo: 1,
+                 _padding: 29;
+    };
+    _Type T = struct Foo; // types as values
+    void print_as_json(_Type T, const void* data){
+        if(T == int){
+            printf("%d", *(const int*)data);
+            return;
+        }
+        if(T == unsigned){
+            printf("%u", *(const unsigned*)data);
+            return;
+        }
+        printf("{");
+        for(size_t i = 0; i < T.fields; i++){
+            auto fi = T.field(i);
+            if(fi.name[0] == '_') continue;
+            if(i != 0) printf(", ");
+            printf("\"%s\": ", fi.name);
+            const void* base = (const char*)data + fi.offset;
+            if(fi.is_bitfield){
+                uint32_t v = *(uint32_t*)base;
+                v >>= fi.bitoffset;
+                uint32_t mask = (1u << fi.bitwidth) - 1;
+                v &= mask;
+                printf("%u", v);
+            }
+            else
+                print_as_json(fi.type, base);
+        }
+        printf("}");
+    }
+    print_as_json(T, &(struct Foo){1, 2, .is_baz=1, .is_bar=0, .is_foo=1});
+    // {"x": 1, "y": 2, "is_baz": 1, "is_bar": 0, "is_foo": 1}
+
+  The above mirrors what we were building before, but now that we have the
+  compiler's type info, we can go much further and support any type that we want.
+  A fuller json ser/deser demo can be seen [here | json demo].
+  ::links
+    json demo = https://github.com/drpriver/DrC/blob/master/Samples/Extensions/json_parse.c
+
+  Documentation for <tt>_Type</tt> can be seen [here | _Type doc].
+  ::links
+    _Type doc = https://github.com/drpriver/DrC/blob/master/EXTENSIONS.md#_type
+
+  And of course, the C preprocessor/parser/interpreter/REPL (top level statements!) can be found [here | drc].
+  It has many more extensions than just this.
+
+  ::links
+    drc = https://github.com/drpriver/DrC
+
+Conclusion::md
+  When you push standard C architectures to their limits, you quickly find that
+  you are writing ad-hoc compilers or tediously managing build
+  hooks just to achieve baseline reflection. By extending the compiler
+  front-end natively, we keep standard data layouts intact while discarding
+  decades of boilerplate and manual metadata synchronization.
+
+  The next step in the evolution is to setup <tt>constexpr</tt> function params
+  to allow compile-time metaprogramming with <tt>_Type</tt>, with template-like
+  results without not adding a new metalanguage.
+
+  Another path to follow is to expose C23 attributes on struct fields for user-defined metadata,
+  which can be used to customize behavior when reflecting.
+
+PostScript::md
+  A neat trick: as <tt>drc</tt> is capable of parsing real projects, you can
+  already use the runtime type info to generate compile time type info as an
+  alternative C compiler in Option 4.
+
+  ::pre.C
+    #include "myproject-header.h"
+    _Type types[] = {
+        Player,
+        Monster,
+        Controller,
+    };
+    void write_typeinfo(_Type);
+    for(size_t i = 0; i < _Countof types; i++)
+      write_typeinfo(types[i]);
+    return 0; // returns early from toplevel, doesn't run main()
+
+::raw
+  </article>
+Copyright::md
+  All code in this article is released into the public domain.
+
+::links
+  home = https://www.davidpriver.com
+  David Priver = mailto:david@davidpriver.com

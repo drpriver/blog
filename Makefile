@@ -57,6 +57,9 @@ include C-macro-reflection-in-D/C-macro-reflection-in-D.mak
 # Use filters instead of macros
 include vim-macros-overrated/vim-macros-overrated.mak
 
+# Adding reflection to C with `_Type`
+include adding-reflection-to-C/adding-reflection-to-C.mak
+
 .PHONY: all
 all: $(PAGES)
 

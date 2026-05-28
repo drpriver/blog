@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>adding-reflection-to-C</title>
+<style>
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  max-width: 80ch;
+  margin: auto;
+  margin-bottom: 40em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 12px;
+  background-color: #fff;
+  color: #000;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #333;
+    color: #fff;
+  }
+  a:visited {
+    color: #88f;
+  }
+  a {
+    color: #88f;
+  }
+}
+dt {
+  font-weight: bold;
+}
+pre {
+  padding-left: 2em;
+  padding-right: 1em;
+  padding-top: 1ex;
+  padding-bottom: 1ex;
+  background-color: #fdf6e3;
+  border-radius: 16px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  overflow-x: auto;
+  line-height: 125%;
+}
+tt {
+  background-color: #eee;
+  padding: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  pre {
+    background-color: #222;
+  }
+  tt {
+    background-color: #222;
+  }
+}
+pre .enum {
+  font-weight: bold;
+}
+pre .keyword {
+  color: #049407;
+}
+@media (prefers-color-scheme: dark) {
+  pre .keyword {
+    color: #24c427;
+  }
+}
+pre .comment {
+  color: #000;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  pre .comment {
+    color: #fff;
+  }
+}
+pre .literal {
+  color: #2aa198;
+}
+pre .type {
+  color: #de6e00;
+}
+pre .macro {
+  color: #66a;
+}
+pre .func, pre .function {
+  color: #213dde;
+}
+@media (prefers-color-scheme: dark) {
+  pre .func, pre .function {
+    color: #519dde;
+  }
+}
+pre .string {
+  color: #2aa198;
+}
+pre .preproc {
+  color: #777;
+}
+.quoted {
+  margin-left: 2em;
+  border-left: 2px solid grey;
+  padding-left: 8px;
+}
+pre .h {
+  font-weight: bold;
+}
+pre .param {
+  color: #6a6;
+}
+</style>
+</head>
+<body>
+<p>
+<a href="https://www.davidpriver.com">Home</a>
+</p>
+<h1 id="adding-reflection-to-c">adding-reflection-to-C</h1>
+<p>
+<i><a href="mailto:david@davidpriver.com">David Priver</a>, May 27th, 2026</i>
+</p>
+<article>
+
+<p>
+Reflection in programming is the ability for a program to introspect its own
+datastructures and procedures, either at compile time or at run time. This is a
+key building block of metaprogramming. This is frequently used for
+automatically generating serialization and deserialization code, in-app
+debuggers and structure explorers.
+</p>
+<p>
+C, as a venerable and minimalistic language, offers no such capability. As a
+result, C programmers are forced to resort to a few options:
+</p>
+<ol>
+<li>
+Duplicate the metadata in parallel structures that need to be kept up to
+ date with the real data structure definitions.
+</li>
+<li>
+Stop using the native syntax for declaring structures/enums/etc. and instead
+ do it with the primitive metaprogramming of the C preprocessor. Instead of
+ directly declaring a structure, add a new X-macro that can be used to
+ generate the struct and also its type info.
+</li>
+<li>
+Stop using the C language at all for declaring your structures and instead
+ use an external tool to generate code, such as ad-hoc scripts or some kind of
+ IDL.
+</li>
+<li>
+Keep declaring your types in C, write a C parser yourself to get that
+ information into your hands and generate the needed reflection data or as
+ inputs to codegen.
+</li>
+</ol>
+<p>
+I've tried all of these options. They all have severe downsides.
+</p>
+<p>
+For now we will focus on runtime type info. The goal is to have a datastructure like:
+</p>
+<pre>
+<span class="comment">// typeinfo.h</span>
+<span class="preproc">#</span><span class="preproc">include</span> <span class="literal">&lt;stdint.h&gt;</span>
+<span class="preproc">#</span><span class="preproc">include</span> <span class="literal">&lt;stddef.h&gt;</span>
+<span class="preproc">#</span><span class="preproc">include</span> <span class="literal">&lt;stdio.h&gt;</span>
+<span class="keyword">struct</span> <span class="type" id="type-typeinfo">TypeInfo</span> {
+    <span class="type">const</span> <span class="type">char</span> *name;
+    <span class="type">size_t</span> size, align;
+    <span class="type">size_t</span> fields;
+    <span class="keyword">struct</span> <span class="type" id="type-fieldinfo">FieldInfo</span> {
+        <span class="type">const</span> <span class="keyword">struct</span> <span class="type">TypeInfo</span> *type;
+        <span class="type">const</span> <span class="type">char</span>* name;
+        <span class="type">size_t</span> offset;
+        <span class="type">_Bool</span> is_bitfield;
+        <span class="type">size_t</span> bf_width;
+        <span class="type">size_t</span> bf_offset;
+    } field[<span class="literal">1</span>]; <span class="comment">// fake FAM, so it can be a member of a union</span>
+};
+<span class="preproc">#</span><span class="preproc">define</span> <span class="macro" id="macro-typeinfo-int32">TYPEINFO_INT32</span> (<span class="keyword">struct</span> <span class="type">TypeInfo</span>*)<span class="literal">0x1</span>
+<span class="preproc">#</span><span class="preproc">define</span> <span class="macro" id="macro-typeinfo-uint32">TYPEINFO_UINT32</span> (<span class="keyword">struct</span> <span class="type">TypeInfo</span>*)<span class="literal">0x2</span>
+<span class="type">void</span> <span class="func" id="func-print-as-json">print_as_json</span>(<span class="type">const</span> <span class="keyword">struct</span> <span class="type">TypeInfo</span>* ti, <span class="type">const</span> <span class="type">void</span>* data){
+    <span class="keyword">if</span>(ti == <span class="macro">TYPEINFO_INT32</span>){
+        <span class="func">printf</span>(<span class="literal">"%d"</span>, *(<span class="type">const</span> <span class="type">int</span>*)data);
+        <span class="keyword">return</span>;
+    }
+    <span class="keyword">if</span>(ti == <span class="macro">TYPEINFO_UINT32</span>){
+        <span class="func">printf</span>(<span class="literal">"%u"</span>, *(<span class="type">const</span> <span class="type">unsigned</span>*)data);
+        <span class="keyword">return</span>;
+    }
+    <span class="func">printf</span>(<span class="literal">"{"</span>);
+    <span class="keyword">for</span>(<span class="type">size_t</span> i = <span class="literal">0</span>; i &lt; ti-&gt;fields; i++){
+        <span class="keyword">if</span>(i != <span class="literal">0</span>) <span class="func">printf</span>(<span class="literal">", "</span>);
+        <span class="type">const</span> <span class="keyword">struct</span> <span class="type">FieldInfo</span>* fi = &amp;ti-&gt;field[i];
+        <span class="func">printf</span>(<span class="literal">"\"%s\": "</span>, fi-&gt;name);
+        <span class="type">const</span> <span class="type">void</span>* base = (<span class="type">const</span> <span class="type">char</span>*)data + fi-&gt;offset;
+        <span class="keyword">if</span>(fi-&gt;is_bitfield){
+            <span class="type">uint32_t</span> v = *(<span class="type">uint32_t</span>*)base;
+            v &gt;&gt;= fi-&gt;bf_offset;
+            <span class="type">uint32_t</span> mask = (<span class="literal">1u</span> &lt;&lt; fi-&gt;bf_width) - <span class="literal">1</span>;
+            v &amp;= mask;
+            <span class="func">printf</span>(<span class="literal">"%u"</span>, v);
+        }
+        <span class="keyword">else</span>
+            <span class="func">print_as_json</span>(fi-&gt;type, base);
+    }
+    <span class="func">printf</span>(<span class="literal">"}"</span>);
+}
+</pre>
+<p>
+This is greatly simplified: in practice you'd want info for arrays, unions,
+function types, pointers, etc.
+</p>
+<div>
+<h2 id="option-1-hand-maintained-parallel-type-info">Option 1: Hand-maintained Parallel Type Info</h2>
+<pre>
+<span class="comment">// option-1.c</span>
+<span class="preproc">#</span><span class="preproc">include</span> <span class="literal">"typeinfo.h"</span>
+<span class="keyword">struct</span> <span class="type" id="type-foo">Foo</span> {
+    <span class="type">int32_t</span> x, y;
+    <span class="keyword">union</span> {
+        <span class="type">uint32_t</span> bf_bits; <span class="comment">// fake field as you can't </span>
+                          <span class="comment">// take the address of a bitfield</span>
+        <span class="type">uint32_t</span> is_baz: <span class="literal">1</span>,
+                 is_bar: <span class="literal">1</span>,
+                 is_foo: <span class="literal">1</span>,
+                 _padding: <span class="literal">29</span>;
+    };
+};
+<span class="type">const</span> <span class="keyword">struct</span> <span class="type" id="type-fooinfo">FooInfo</span> {
+    <span class="keyword">union</span> {
+        <span class="keyword">struct</span> <span class="type">TypeInfo</span> info;
+        <span class="keyword">struct</span> {
+            <span class="type">const</span> <span class="type">char</span> *name;
+            <span class="type">size_t</span> size, align;
+            <span class="type">size_t</span> fields;
+            <span class="keyword">struct</span> <span class="type">FieldInfo</span> field[<span class="literal">5</span>];
+        };
+    };
+} typeinfo_Foo = {
+    .name = <span class="literal">"Foo"</span>,
+    .size = <span class="keyword">sizeof</span>(<span class="keyword">struct</span> <span class="type">Foo</span>),
+    .align = <span class="keyword">_Alignof</span>(<span class="keyword">struct</span> <span class="type">Foo</span>),
+    .fields = <span class="literal">5</span>,
+    .field = {
+        {
+            .type = <span class="macro">TYPEINFO_INT32</span>,
+            .name = <span class="literal">"x"</span>,
+            .offset = offsetof(<span class="keyword">struct</span> <span class="type">Foo</span>, x),
+        },
+        {
+            .type = <span class="macro">TYPEINFO_INT32</span>,
+            .name = <span class="literal">"y"</span>,
+            .offset = offsetof(<span class="keyword">struct</span> <span class="type">Foo</span>, y),
+        },
+        {
+            .type = <span class="macro">TYPEINFO_UINT32</span>,
+            .name = <span class="literal">"is_baz"</span>,
+            .offset = offsetof(<span class="keyword">struct</span> <span class="type">Foo</span>, bf_bits),
+            .is_bitfield = <span class="literal">1</span>, <span class="comment">// no intrinsic to detect this</span>
+            .bf_width = <span class="literal">1</span>, <span class="comment">// no intrinsic to get this</span>
+            .bf_offset = <span class="literal">0</span>, <span class="comment">// no intrinsic to get this</span>
+        },
+        {
+            .type = <span class="macro">TYPEINFO_UINT32</span>,
+            .name = <span class="literal">"is_bar"</span>,
+            .offset = offsetof(<span class="keyword">struct</span> <span class="type">Foo</span>, bf_bits),
+            .is_bitfield = <span class="literal">1</span>, <span class="comment">// no intrinsic to detect this</span>
+            .bf_width = <span class="literal">1</span>, <span class="comment">// no intrinsic to get this</span>
+            .bf_offset = <span class="literal">1</span>, <span class="comment">// no intrinsic to get this</span>
+        },
+        {
+            .type = <span class="macro">TYPEINFO_UINT32</span>,
+            .name = <span class="literal">"is_foo"</span>,
+            .offset = offsetof(<span class="keyword">struct</span> <span class="type">Foo</span>, bf_bits),
+            .is_bitfield = <span class="literal">1</span>, <span class="comment">// no intrinsic to detect this</span>
+            .bf_width = <span class="literal">1</span>, <span class="comment">// no intrinsic to get this</span>
+            .bf_offset = <span class="literal">1</span>, <span class="comment">// no intrinsic to get this</span>
+        },
+    },
+};
+</pre>
+<p>
+Option 1 is error-prone, laborious and hard to keep in sync, although it does
+give you the most control and the ability to customize things (such as
+serializing simple structs as a json array instead of json objects for vector
+types, using exactly the right allocator). This option is actually not as bad
+as people think, but it does take the joy out of programming.
+</p>
+<p>
+The real drawback is if you get things wrong, the compiler won't help. For
+example, if you use bitfields (and contrary to popular belief, you should as
+they lead to significant size savings, with better syntax than
+<tt>#define</tt> flags and it's not actually hard to get portable bitfields
+between compilers, but that's a different blog post), compilers don't offer
+bitfield offset or width intrinsics so you have to maintain those by hand,
+which means you can end up reading or writing the wrong bits. (Did you notice
+that <tt>is_foo</tt> has the wrong <tt>bf_offset</tt>?)
+</p>
+<pre>
+<span class="preproc">#</span><span class="preproc">include</span> <span class="literal">"option-1.c"</span>
+
+<span class="type">int</span> <span class="func" id="func-main">main</span>(<span class="type">void</span>){
+    <span class="keyword">struct</span> <span class="type">Foo</span> f = {
+        <span class="literal">1</span>, <span class="literal">2</span>,
+        .is_baz = <span class="literal">1</span>,
+        .is_bar = <span class="literal">0</span>,
+        .is_foo = <span class="literal">1</span>,
+    };
+    <span class="func">print_as_json</span>(&amp;typeinfo_Foo.info, &amp;f);
+    <span class="comment">// {"x": 1, "y": 2, "is_baz": 1, "is_bar": 0, "is_foo": 0}</span>
+    <span class="comment">// oops: `is_foo` is wrong</span>
+    <span class="keyword">return</span> <span class="literal">0</span>;
+}
+</pre>
+</div>
+<div>
+<h2 id="option-2-use-x-macros-to-declare-types">Option 2: Use X-macros to Declare Types</h2>
+<pre>
+<span class="comment">// option-2.c</span>
+<span class="preproc">#</span><span class="preproc">include</span> <span class="literal">"typeinfo.h"</span>
+<span class="comment">// X(parentname, pre, TI_TYPE, type, name, suffix, bf_offset, bf_width, addrmember, end)</span>
+<span class="preproc">#</span><span class="preproc">define</span> <span class="macro" id="macro-xfoo">XFOO</span>(<span class="macro">X</span>) \
+  <span class="macro">X</span>(<span class="type">Foo</span>, , <span class="macro">TYPEINFO_INT32</span>, <span class="type">int32_t</span>, x, , <span class="literal">0</span>, <span class="literal">0</span>, x, ) \
+  <span class="macro">X</span>(<span class="type">Foo</span>, , <span class="macro">TYPEINFO_INT32</span>, <span class="type">int32_t</span>, y, , <span class="literal">0</span>, <span class="literal">0</span>, y, ) \
+  <span class="macro">X</span>(<span class="type">Foo</span>, <span class="keyword">union</span> { <span class="type">uint32_t</span> bf_bits; <span class="keyword">struct</span> {, <span class="macro">TYPEINFO_UINT32</span>, <span class="type">uint32_t</span>, is_baz, :<span class="literal">1</span>, <span class="literal">0</span>, <span class="literal">1</span>, bf_bits,) \
+  <span class="macro">X</span>(<span class="type">Foo</span>, , <span class="macro">TYPEINFO_UINT32</span>, <span class="type">uint32_t</span>, is_bar, :<span class="literal">1</span>, <span class="literal">1</span>, <span class="literal">1</span>, bf_bits, ) \
+  <span class="macro">X</span>(<span class="type">Foo</span>, , <span class="macro">TYPEINFO_UINT32</span>, <span class="type">uint32_t</span>, is_foo, :<span class="literal">1</span>, <span class="literal">2</span>, <span class="literal">1</span>, bf_bits, <span class="type">uint32_t</span> _padding: <span class="literal">29</span>;};};) \
+
+<span class="keyword">struct</span> <span class="type" id="type-foo">Foo</span> {
+<span class="preproc">#</span><span class="preproc">define</span> <span class="macro" id="macro-x">X</span>(parentname, pre, TI_TYPE, type, name, suffix, bf_offset, bf_width, addrmember, end) \
+    pre type name suffix; end
+    <span class="macro">XFOO</span>(<span class="macro">X</span>)
+<span class="preproc">#</span><span class="preproc">undef</span> <span class="macro">X</span>
+};
+<span class="keyword">typedef</span> <span class="keyword">struct</span> <span class="type">Foo</span> <span class="type">Foo</span>;
+<span class="keyword">enum</span> {
+<span class="preproc">#</span><span class="preproc">define</span> <span class="macro">X</span>(parentname, pre, TI_TYPE, type, name, suffix, bf_offset, bf_width, addrmember, end) \
+    FOO__##name,
+    <span class="macro">XFOO</span>(<span class="macro">X</span>)
+<span class="preproc">#</span><span class="preproc">undef</span> <span class="macro">X</span>
+    FOO__count,
+};
+<span class="preproc">#</span><span class="preproc">define</span> <span class="macro" id="macro-typeinfo">TYPEINFO</span>(<span class="macro">X</span>, XMACRO, typename, CAPSNAME) \
+    <span class="type">const</span> <span class="keyword">struct</span> typename##Info { \
+        <span class="keyword">union</span> { \
+        <span class="keyword">struct</span> <span class="type">TypeInfo</span> info; \
+        <span class="keyword">struct</span> { \
+            <span class="type">const</span> <span class="type">char</span> *name; \
+            <span class="type">size_t</span> size, align; \
+            <span class="type">size_t</span> fields; \
+            <span class="keyword">struct</span> <span class="type">FieldInfo</span> field[CAPSNAME##__count]; \
+        }; \
+    }; \
+} \
+  typeinfo_##typename = { \
+  .name = <span class="preproc">#</span>typename, \
+  .size = <span class="keyword">sizeof</span>(typename), \
+  .align = <span class="keyword">_Alignof</span>(typename), \
+  .fields = CAPSNAME##__count, \
+  .field = { \
+      XMACRO(<span class="macro">X</span>) \
+  } \
+} \
+
+<span class="preproc">#</span><span class="preproc">define</span> <span class="macro" id="macro-xfieldinfo">XFIELDINFO</span>(parentname, pre, TI_TYPE, type_, fieldname, suffix, bf_offset_, bf_width_, addrmember, end) \
+    { \
+        .name = <span class="preproc">#</span>fieldname, \
+        .type = TI_TYPE, \
+        .offset = offsetof(parentname, addrmember), \
+        .is_bitfield = !!bf_width_, \
+        .bf_offset = bf_offset_, \
+        .bf_width = bf_width_, \
+    },
+<span class="macro">TYPEINFO</span>(<span class="macro">XFIELDINFO</span>, <span class="macro">XFOO</span>, <span class="type">Foo</span>, FOO);
+</pre>
+<p>
+Option 2 is a mess. You can't forget to add serialization code for a field,
+but these macros are getting nasty and we don't even support pointers,
+arrays, unions, etc. We could refactor things a bit, but it's pretty clear
+this is the wrong direction.
+</p>
+<pre>
+<span class="preproc">#</span><span class="preproc">include</span> <span class="literal">"option-2.c"</span>
+
+<span class="type">int</span> <span class="func" id="func-main">main</span>(<span class="type">void</span>){
+    <span class="keyword">struct</span> <span class="type">Foo</span> f = {
+        <span class="literal">1</span>, <span class="literal">2</span>,
+        .is_baz = <span class="literal">1</span>,
+        .is_bar = <span class="literal">0</span>,
+        .is_foo = <span class="literal">1</span>,
+    };
+    <span class="func">print_as_json</span>(&amp;typeinfo_Foo.info, &amp;f);
+    <span class="comment">// {"x": 1, "y": 2, "is_baz": 1, "is_bar": 0, "is_foo": 1}</span>
+    <span class="keyword">return</span> <span class="literal">0</span>;
+}
+</pre>
+</div>
+<div>
+<h2 id="option-3-codegen">Option 3: Codegen</h2>
+<p>
+A lot of projects end up here. Maintaining by hand leads to too many
+uncheckable bugs and the macro abuse is too ugly.
+Sometimes you need to conform to an external schema or protocol anyway, so
+that the structures are shared between different projects, processors,
+languages, etc.
+If your problem needs an IDL or external protocol, then go for it.
+It's a well-trod path and is better than trying to expose your internal types
+as the protocol.
+</p>
+<p>
+There are drawbacks:
+</p>
+<ul>
+<li>
+You're no longer programming C. You're designing your data types in some
+ other language.
+</li>
+<li>
+If you use an IDL, they are not intended to be core data types of your
+ programs, they are just for interfacing.
+</li>
+<li>
+You now need build system integration. C build systems tend to suck for
+ some reason (unless you write it yourself in C), so this adds extra pain.
+</li>
+</ul>
+<p>
+That makes sense for an IDL, but you will also sometimes see people
+generating internal-only types in python scripts or jinja2 templates.
+At that point, you are writing a bad compiler.
+</p>
+</div>
+<div>
+<h2 id="option-4-write-a-c-compiler">Option 4: Write a C compiler</h2>
+<p>
+Let's look back at the type we're trying to generate type info for:
+</p>
+<pre>
+<span class="preproc">#</span><span class="preproc">include</span> <span class="literal">&lt;stdint.h&gt;</span>
+
+<span class="keyword">struct</span> <span class="type" id="type-foo">Foo</span> {
+    <span class="type">int32_t</span> x, y;
+    <span class="type">uint32_t</span> is_baz: <span class="literal">1</span>,
+             is_bar: <span class="literal">1</span>,
+             is_foo: <span class="literal">1</span>,
+             _padding: <span class="literal">29</span>;
+};
+</pre>
+<p>
+This isn't that bad right? We don't need to parse every single possible type,
+just the ones in our program and we could write it in a sane fashion.
+We've already accepted that we need a build step (C is too anemic).
+</p>
+<p>
+It's not that hard to write a C tokenizer and we can just ignore macros/includes
+and hardcode basic types. So it can end up being a reasonable solution to
+pattern match on tokens to get the data you need.
+</p>
+<p>
+Or, you might just end up using something like libclang to parse your code
+and extract the info you need (although libclang is slow and hard to use and
+now you depend on LLVM for your C project just to parse and write json).
+Either way, you end up with a custom C compiler step before your real C
+compiler invocation.
+</p>
+<p>
+Sadly, the compiler literally has the information we need (it must in order
+to layout structs and type check the code), but it won't give it to us and we
+end up having to re-implement a C compiler ourselves.
+</p>
+</div>
+<div>
+<h2 id="extending-c">Extending C</h2>
+<p>
+Well I ended up at option 4 and decided that it wouldn't be <i>that</i> hard to go
+all the way.  Despite what people say, the C preprocessor is rather simple (I
+think they get confused by the blue paint algorithm) and is actually kind of
+elegant once you realize that it is not a text-to-text transformer: it turns
+text into CPP tokens and then into C tokens. It doesn't turn back into text.
+</p>
+<p>
+So I took my little C tokenizer and added a CPP tokenizer in front of it.
+Then I got includes, macros, etc. working. Reworked the C tokenizer to be a
+conversion from the CPP tokenizer.
+Then I got declaration and declarator parsing working. Then expression
+parsing. Then to see if it was all correct I started tree-walking
+interpreting the code and calling into native functions with libffi.
+And before I knew it I had a C interpreter that could interpret itself.
+</p>
+<p>
+At that point I literally had what I wanted - that internal type info that the
+compiler had. So why not, I added a new type to C: <tt>_Type</tt>.
+</p>
+<div class="C">
+<pre>
+#include &lt;stdint.h&gt;
+#include &lt;stddef.h&gt;
+struct Foo {
+    int32_t x, y;
+    uint32_t is_baz: 1,
+             is_bar: 1,
+             is_foo: 1,
+             _padding: 29;
+};
+_Type T = struct Foo; // types as values
+void print_as_json(_Type T, const void* data){
+    if(T == int){
+        printf("%d", *(const int*)data);
+        return;
+    }
+    if(T == unsigned){
+        printf("%u", *(const unsigned*)data);
+        return;
+    }
+    printf("{");
+    for(size_t i = 0; i &lt; T.fields; i++){
+        auto fi = T.field(i);
+        if(fi.name[0] == '_') continue;
+        if(i != 0) printf(", ");
+        printf("\"%s\": ", fi.name);
+        const void* base = (const char*)data + fi.offset;
+        if(fi.is_bitfield){
+            uint32_t v = *(uint32_t*)base;
+            v &gt;&gt;= fi.bitoffset;
+            uint32_t mask = (1u &lt;&lt; fi.bitwidth) - 1;
+            v &amp;= mask;
+            printf("%u", v);
+        }
+        else
+            print_as_json(fi.type, base);
+    }
+    printf("}");
+}
+print_as_json(T, &amp;(struct Foo){1, 2, .is_baz=1, .is_bar=0, .is_foo=1});
+// {"x": 1, "y": 2, "is_baz": 1, "is_bar": 0, "is_foo": 1}
+
+</pre>
+</div>
+<p>
+The above mirrors what we were building before, but now that we have the
+compiler's type info, we can go much further and support any type that we want.
+A fuller json ser/deser demo can be seen <a href="https://github.com/drpriver/DrC/blob/master/Samples/Extensions/json_parse.c">here</a>.
+</p>
+<p>
+Documentation for <tt>_Type</tt> can be seen <a href="https://github.com/drpriver/DrC/blob/master/EXTENSIONS.md#_type">here</a>.
+</p>
+<p>
+And of course, the C preprocessor/parser/interpreter/REPL (top level statements!) can be found <a href="https://github.com/drpriver/DrC">here</a>.
+It has many more extensions than just this.
+</p>
+</div>
+<div>
+<h2 id="conclusion">Conclusion</h2>
+<p>
+When you push standard C architectures to their limits, you quickly find that
+you are writing ad-hoc compilers or tediously managing build
+hooks just to achieve baseline reflection. By extending the compiler
+front-end natively, we keep standard data layouts intact while discarding
+decades of boilerplate and manual metadata synchronization.
+</p>
+<p>
+The next step in the evolution is to setup <tt>constexpr</tt> function params
+to allow compile-time metaprogramming with <tt>_Type</tt>, with template-like
+results without not adding a new metalanguage.
+</p>
+<p>
+Another path to follow is to expose C23 attributes on struct fields for user-defined metadata,
+which can be used to customize behavior when reflecting.
+</p>
+</div>
+<div>
+<h2 id="postscript">PostScript</h2>
+<p>
+A neat trick: as <tt>drc</tt> is capable of parsing real projects, you can
+already use the runtime type info to generate compile time type info as an
+alternative C compiler in Option 4.
+</p>
+<div class="C">
+<pre>
+#include "myproject-header.h"
+_Type types[] = {
+    Player,
+    Monster,
+    Controller,
+};
+void write_typeinfo(_Type);
+for(size_t i = 0; i &lt; _Countof types; i++)
+  write_typeinfo(types[i]);
+return 0; // returns early from toplevel, doesn't run main()
+
+</pre>
+</div>
+</div>
+</article>
+<div>
+<h2 id="copyright">Copyright</h2>
+<p>
+All code in this article is released into the public domain.
+</p>
+</div>
+</body>
+</html>
