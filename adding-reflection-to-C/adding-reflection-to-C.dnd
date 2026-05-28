@@ -211,7 +211,7 @@ Conclusion::md
 
   The next step in the evolution is to setup <tt>constexpr</tt> function params
   to allow compile-time metaprogramming with <tt>_Type</tt>, with template-like
-  results without not adding a new metalanguage.
+  results without adding a new metalanguage.
 
   Another path to follow is to expose C23 attributes on struct fields for user-defined metadata,
   which can be used to customize behavior when reflecting.
