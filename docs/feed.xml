@@ -2989,7 +2989,7 @@ All code in this article is released into the public domain.
 &lt;head&gt;
 &lt;meta charset="UTF-8"&gt;
 &lt;meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"&gt;
-&lt;title&gt;adding-reflection-to-C&lt;/title&gt;
+&lt;title&gt;Adding reflection to C&lt;/title&gt;
 &lt;style&gt;
 :root {
   color-scheme: light dark;
@@ -3109,7 +3109,7 @@ pre .param {
 &lt;p&gt;
 &lt;a href="https://www.davidpriver.com"&gt;Home&lt;/a&gt;
 &lt;/p&gt;
-&lt;h1 id="adding-reflection-to-c"&gt;adding-reflection-to-C&lt;/h1&gt;
+&lt;h1 id="adding-reflection-to-c"&gt;Adding reflection to C&lt;/h1&gt;
 &lt;p&gt;
 &lt;i&gt;&lt;a href="mailto:david@davidpriver.com"&gt;David Priver&lt;/a&gt;, May 27th, 2026&lt;/i&gt;
 &lt;/p&gt;
