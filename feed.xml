@@ -3535,7 +3535,7 @@ print_as_json(T, &amp;amp;(struct Foo){1, 2, .is_baz=1, .is_bar=0, .is_foo=1});
 &lt;p&gt;
 The above mirrors what we were building before, but now that we have the
 compiler's type info, we can go much further and support any type that we want.
-A fuller json ser/deser demo can be seen &lt;a href="https://github.com/drpriver/DrC/blob/master/Samples/Extensions/json_parse.c"&gt;here&lt;/a&gt;.
+A fuller json ser/deser demo can be seen &lt;a href="https://github.com/drpriver/DrC/blob/master/Samples/Extensions/json_parse.h"&gt;here&lt;/a&gt;.
 &lt;/p&gt;
 &lt;p&gt;
 Documentation for &lt;tt&gt;_Type&lt;/tt&gt; can be seen &lt;a href="https://github.com/drpriver/DrC/blob/master/EXTENSIONS.md#_type"&gt;here&lt;/a&gt;.

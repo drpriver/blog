@@ -190,7 +190,7 @@ Extending C::md
   compiler's type info, we can go much further and support any type that we want.
   A fuller json ser/deser demo can be seen [here | json demo].
   ::links
-    json demo = https://github.com/drpriver/DrC/blob/master/Samples/Extensions/json_parse.c
+    json demo = https://github.com/drpriver/DrC/blob/master/Samples/Extensions/json_parse.h
 
   Documentation for <tt>_Type</tt> can be seen [here | _Type doc].
   ::links
