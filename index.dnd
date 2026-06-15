@@ -7,6 +7,7 @@ Welcome to my blog!
 
 Feel free to check out one of the following articles:
 
+- [Fixing C's biggest mistake | fixing-c-biggest-mistake]
 - [Adding reflection to C | adding-reflection-to-C]
 - [Vim macros are overrated | vim-macros]
 - [C macro reflection in D | cmacro]
@@ -71,6 +72,7 @@ WebApps:
   cmacro = C-macro-reflection-in-D.html
   vim-macros = vim-macros-overrated.html
   adding-reflection-to-C = adding-reflection-to-C.html
+  fixing-c-biggest-mistake = fixing-c-biggest-mistake.html
 ::css
   :root {
     color-scheme: light dark;
