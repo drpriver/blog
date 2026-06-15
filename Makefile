@@ -60,6 +60,9 @@ include vim-macros-overrated/vim-macros-overrated.mak
 # Adding reflection to C with `_Type`
 include adding-reflection-to-C/adding-reflection-to-C.mak
 
+# Adding slices to C
+include fixing-c-biggest-mistake/fixing-c-biggest-mistake.mak
+
 .PHONY: all
 all: $(PAGES)
 

@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>Fixing C's Biggest Mistake</title>
+<style>
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  max-width: 68ch;
+  margin: auto;
+  margin-bottom: 40em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 12px;
+  background-color: #fff;
+  color: #000;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #333;
+    color: #fff;
+  }
+  a:visited {
+    color: #88f;
+  }
+  a {
+    color: #88f;
+  }
+}
+dt {
+  font-weight: bold;
+}
+pre {
+  padding-left: 2em;
+  padding-right: 1em;
+  padding-top: 1ex;
+  padding-bottom: 1ex;
+  background-color: #fdf6e3;
+  border-radius: 16px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  overflow-x: auto;
+  line-height: 125%;
+}
+tt {
+  background-color: #eee;
+  padding: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  pre {
+    background-color: #222;
+  }
+  tt {
+    background-color: #222;
+  }
+}
+pre .enum {
+  font-weight: bold;
+}
+pre .keyword {
+  color: #049407;
+}
+@media (prefers-color-scheme: dark) {
+  pre .keyword {
+    color: #24c427;
+  }
+}
+pre .comment {
+  color: #000;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  pre .comment {
+    color: #fff;
+  }
+}
+pre .literal {
+  color: #2aa198;
+}
+pre .type {
+  color: #de6e00;
+}
+pre .macro {
+  color: #66a;
+}
+pre .func, pre .function {
+  color: #213dde;
+}
+@media (prefers-color-scheme: dark) {
+  pre .func, pre .function {
+    color: #519dde;
+  }
+}
+pre .string {
+  color: #2aa198;
+}
+pre .preproc {
+  color: #777;
+}
+.quoted {
+  margin-left: 2em;
+  border-left: 2px solid grey;
+  padding-left: 8px;
+}
+pre .h {
+  font-weight: bold;
+}
+pre .param {
+  color: #6a6;
+}
+</style>
+</head>
+<body>
+<p>
+<a href="https://www.davidpriver.com">Home</a>
+</p>
+<h1 id="fixing-cs-biggest-mistake">Fixing C's Biggest Mistake</h1>
+<p>
+<i><a href="mailto:david@davidpriver.com">David Priver</a>, June 14th, 2026</i>
+</p>
+<article>
+
+<p>
+Back in 2009, Walter Bright (creator of the D programming language and Digital Mars C++ compiler before that),
+wrote an <a href="https://digitalmars.com/articles/C-biggest-mistake.html">article</a> arguing that C's biggest mistake was "Conflating pointers
+with arrays." In particular, that it is impossible to pass an array to a
+function without it being converted to a pointer, so the array dimension is
+lost.
+</p>
+<p>
+He then goes on to state that the fix is to add a fat pointer syntax:
+</p>
+<div>
+<pre>
+void foo(char a[..])
+</pre>
+</div>
+<p>
+with similar semantics as for his D programming language. Such a fat pointer would be a {count, pointer} pair.
+</p>
+<p>
+Although he doesn't say this directly, on most ABIs a small struct as that would be passed in two registers.
+</p>
+<p>
+So it would end-up being ABI equivalent to
+</p>
+<div>
+<pre>
+#if NEWC
+  extern void foo(char a[..]);
+#elif C99
+  extern void foo(size_t dim, char a[dim]);
+#else
+    extern void foo(size_t dim, char *a);
+#endif
+
+</pre>
+</div>
+<p>
+He then fleshes out the rest of the operations.
+</p>
+<p>
+Fat pointers, slices, views, spans, many languages have a concept like this
+</p>
+<div>
+<h2 id="slices-in-drc">Slices in DrC</h2>
+<p>
+I've been writing a <a href="https://github.com/drpriver/DrC">C interpreter</a> lately and been having fun modernizing C
+by adding backwards-compatible extensions.
+Adding a fat pointer type (I chose to call it a slice type) became the
+obvious thing to do next. As I write a lot of Python in my day job, I also
+decided to add slicing as an obvious addition to having a first-class slice
+type.
+</p>
+<p>
+For the slice operation itself, I decided syntactically it made the most sense
+to not use `..` or `...` as that makes lexing ambiguous with integer
+literals: `1..3` looks like `1.` and `.3`, which are two double literals. So
+I went with the Python syntax of `:`. Once I was using `:`, it made sense to
+also use that for the type itself instead of Walter's `..`.
+</p>
+<div>
+<pre>
+int slice[:]; // {count, data} pair
+int arr[] = {1,2,3};
+slice = arr; // arrays implicitly convert to slices
+// access length with .count or _Countof
+assert(_Countof slice == slice.count);
+int sum(int vals[:]){
+  int result = 0;
+  for(size_t i = 0; i &lt; vals.count; i++){
+    result += vals[i];
+  }
+  return result;
+}
+// implicit conversion when passed to function, array length is retained!
+assert(sum(arr) == 6);
+
+</pre>
+</div>
+<p>
+Since it re-uses C's peculiar way of declaring arrays, returning them from
+functions looks weird, similar to how returning function pointers looks
+weird.
+</p>
+<div>
+<pre>
+#include &lt;ctype.h&gt;
+#include &lt;stdio.h&gt;
+char strip(char s[:])[:]{ // [:] goes after params
+    while(s.count &amp;&amp; isspace(s[0])){
+        s.count--;
+        s.data++;
+    }
+    while(s.count &amp;&amp; (!s[s.count-1] || isspace(s[s.count-1])))
+        s.count--;
+    return s;
+}
+char stripped[:] = strip(" hello world!   ");
+printf("'%.*s'\n", (int)stripped.count, stripped.data); // 'hello world!'
+
+</pre>
+</div>
+<p>
+Unlike Walter's proposal, I don't special case string literals. They are
+defined as arrays of char, with their length including the terminating NUL.
+So implicit conversion to slices retains that terminating NUL.
+</p>
+<p>
+This is actually a better design as it means you can actually check if the
+slice is NUL-terminated when passing to legacy C functions instead of just
+hoping it is.
+</p>
+<p>
+My interpreter includes slice-bounds-checking of course, but if this would be
+added to the C standard I think it should be implementation-defined what
+happens for out-of-bounds accesses. It could then be controlled by a compiler
+switch whether it traps or is undefined, etc.
+</p>
+</div>
+<div>
+<h2 id="conclusion">Conclusion</h2>
+<p>
+Implementing slices in DrC was surprisingly easy. Ideally such a construct
+could be standardized so that we don't all have to define our own
+bounds-checked array types or raw-dog length+ptr APIs anymore.
+</p>
+</div>
+</article>
+<div>
+<h2 id="copyright">Copyright</h2>
+<p>
+All code in this article is released into the public domain.
+</p>
+</div>
+</body>
+</html>

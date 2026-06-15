@@ -1,0 +1,123 @@
+::css #import
+  ../../c.css
+::js
+  let wrapped = ctx.select_nodes({attributes:['wrapped']});
+  for(let w of wrapped){
+    w.insert_child(0, '<pre>');
+    w.add_child('</pre>');
+  }
+  //endjs
+[Home | home]
+Fixing C's Biggest Mistake::title
+<i>[David Priver], June 14th, 2026</i>
+
+::links
+  article = https://digitalmars.com/articles/C-biggest-mistake.html
+  C interpreter = https://github.com/drpriver/DrC
+
+::raw
+  <article>
+
+Back in 2009, Walter Bright (creator of the D programming language and Digital Mars C++ compiler before that),
+wrote an [article] arguing that C's biggest mistake was "Conflating pointers
+with arrays." In particular, that it is impossible to pass an array to a
+function without it being converted to a pointer, so the array dimension is
+lost.
+
+He then goes on to state that the fix is to add a fat pointer syntax:
+::pre
+  void foo(char a[..])
+with similar semantics as for his D programming language. Such a fat pointer would be a {count, pointer} pair.
+
+Although he doesn't say this directly, on most ABIs a small struct as that would be passed in two registers.
+
+So it would end-up being ABI equivalent to 
+::pre
+  #if NEWC
+    extern void foo(char a[..]);
+  #elif C99
+    extern void foo(size_t dim, char a[dim]);
+  #else
+      extern void foo(size_t dim, char *a);
+  #endif
+
+He then fleshes out the rest of the operations.
+
+Fat pointers, slices, views, spans, many languages have a concept like this
+
+Slices in DrC::md
+  I've been writing a [C interpreter] lately and been having fun modernizing C
+  by adding backwards-compatible extensions. 
+  Adding a fat pointer type (I chose to call it a slice type) became the
+  obvious thing to do next. As I write a lot of Python in my day job, I also
+  decided to add slicing as an obvious addition to having a first-class slice
+  type.
+
+  For the slice operation itself, I decided syntactically it made the most sense
+  to not use `..` or `...` as that makes lexing ambiguous with integer
+  literals: `1..3` looks like `1.` and `.3`, which are two double literals. So
+  I went with the Python syntax of `:`. Once I was using `:`, it made sense to
+  also use that for the type itself instead of Walter's `..`.
+
+  ::pre
+    int slice[:]; // {count, data} pair
+    int arr[] = {1,2,3};
+    slice = arr; // arrays implicitly convert to slices
+    // access length with .count or _Countof
+    assert(_Countof slice == slice.count);
+    int sum(int vals[:]){
+      int result = 0;
+      for(size_t i = 0; i < vals.count; i++){
+        result += vals[i];
+      }
+      return result;
+    }
+    // implicit conversion when passed to function, array length is retained!
+    assert(sum(arr) == 6);
+
+  Since it re-uses C's peculiar way of declaring arrays, returning them from
+  functions looks weird, similar to how returning function pointers looks
+  weird.
+
+  ::pre
+    #include <ctype.h>
+    #include <stdio.h>
+    char strip(char s[:])[:]{ // [:] goes after params
+        while(s.count && isspace(s[0])){
+            s.count--;
+            s.data++;
+        }
+        while(s.count && (!s[s.count-1] || isspace(s[s.count-1])))
+            s.count--;
+        return s;
+    }
+    char stripped[:] = strip(" hello world!   ");
+    printf("'%.*s'\n", (int)stripped.count, stripped.data); // 'hello world!'
+
+  Unlike Walter's proposal, I don't special case string literals. They are
+  defined as arrays of char, with their length including the terminating NUL.
+  So implicit conversion to slices retains that terminating NUL.
+
+  This is actually a better design as it means you can actually check if the
+  slice is NUL-terminated when passing to legacy C functions instead of just
+  hoping it is.
+
+  My interpreter includes slice-bounds-checking of course, but if this would be
+  added to the C standard I think it should be implementation-defined what
+  happens for out-of-bounds accesses. It could then be controlled by a compiler
+  switch whether it traps or is undefined, etc.
+
+Conclusion::md
+  Implementing slices in DrC was surprisingly easy. Ideally such a construct
+  could be standardized so that we don't all have to define our own
+  bounds-checked array types or raw-dog length+ptr APIs anymore.
+
+
+::raw
+  </article>
+Copyright::md
+  All code in this article is released into the public domain.
+
+::links
+  home = https://www.davidpriver.com
+  David Priver = mailto:david@davidpriver.com
