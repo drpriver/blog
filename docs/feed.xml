@@ -3839,6 +3839,11 @@ slice is NUL-terminated when passing to legacy C functions instead of just
 hoping it is.
 &lt;/p&gt;
 &lt;p&gt;
+&lt;i&gt;Update, Sep 12th, 2026&lt;/i&gt;: I have since reversed this decision and
+Walter was right, as usual. Including the terminating NUL made stirng literals
+too annoying to use in slice-based APIs.
+&lt;/p&gt;
+&lt;p&gt;
 My interpreter includes slice-bounds-checking of course, but if this would be
 added to the C standard I think it should be implementation-defined what
 happens for out-of-bounds accesses. It could then be controlled by a compiler

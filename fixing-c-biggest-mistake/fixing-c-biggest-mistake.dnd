@@ -31,7 +31,7 @@ with similar semantics as for his D programming language. Such a fat pointer wou
 
 Although he doesn't say this directly, on most ABIs a small struct as that would be passed in two registers.
 
-So it would end-up being ABI equivalent to 
+So it would end-up being ABI equivalent to
 ::pre
   #if NEWC
     extern void foo(char a[..]);
@@ -47,7 +47,7 @@ Fat pointers, slices, views, spans, many languages have a concept like this
 
 Slices in DrC::md
   I've been writing a [C interpreter] lately and been having fun modernizing C
-  by adding backwards-compatible extensions. 
+  by adding backwards-compatible extensions.
   Adding a fat pointer type (I chose to call it a slice type) became the
   obvious thing to do next. As I write a lot of Python in my day job, I also
   decided to add slicing as an obvious addition to having a first-class slice
@@ -101,6 +101,10 @@ Slices in DrC::md
   This is actually a better design as it means you can actually check if the
   slice is NUL-terminated when passing to legacy C functions instead of just
   hoping it is.
+
+  <i>Update, Sep 12th, 2026</i>: I have since reversed this decision and
+  Walter was right, as usual. Including the terminating NUL made stirng literals
+  too annoying to use in slice-based APIs.
 
   My interpreter includes slice-bounds-checking of course, but if this would be
   added to the C standard I think it should be implementation-defined what
