@@ -63,6 +63,9 @@ include adding-reflection-to-C/adding-reflection-to-C.mak
 # Adding slices to C
 include fixing-c-biggest-mistake/fixing-c-biggest-mistake.mak
 
+# From Tree walker to bytecode interpreter
+include From-Tree-Walker-to-Bytecode/From-Tree-Walker-to-Bytecode.mak
+
 .PHONY: all
 all: $(PAGES)
 

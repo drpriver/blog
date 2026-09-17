@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>From Tree Walking to Bytecode</title>
+<style>
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  max-width: 68ch;
+  margin: auto;
+  margin-bottom: 40em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 12px;
+  background-color: #fff;
+  color: #000;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #333;
+    color: #fff;
+  }
+  a:visited {
+    color: #88f;
+  }
+  a {
+    color: #88f;
+  }
+}
+dt {
+  font-weight: bold;
+}
+pre {
+  padding-left: 2em;
+  padding-right: 1em;
+  padding-top: 1ex;
+  padding-bottom: 1ex;
+  background-color: #fdf6e3;
+  border-radius: 16px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  overflow-x: auto;
+  line-height: 125%;
+}
+tt {
+  background-color: #eee;
+  padding: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  pre {
+    background-color: #222;
+  }
+  tt {
+    background-color: #222;
+  }
+}
+pre .enum {
+  font-weight: bold;
+}
+pre .keyword {
+  color: #049407;
+}
+@media (prefers-color-scheme: dark) {
+  pre .keyword {
+    color: #24c427;
+  }
+}
+pre .comment {
+  color: #000;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  pre .comment {
+    color: #fff;
+  }
+}
+pre .literal {
+  color: #2aa198;
+}
+pre .type {
+  color: #de6e00;
+}
+pre .macro {
+  color: #66a;
+}
+pre .func, pre .function {
+  color: #213dde;
+}
+@media (prefers-color-scheme: dark) {
+  pre .func, pre .function {
+    color: #519dde;
+  }
+}
+pre .string {
+  color: #2aa198;
+}
+pre .preproc {
+  color: #777;
+}
+.quoted {
+  margin-left: 2em;
+  border-left: 2px solid grey;
+  padding-left: 8px;
+}
+pre .h {
+  font-weight: bold;
+}
+pre .param {
+  color: #6a6;
+}
+</style>
+</head>
+<body>
+<p>
+<a href="https://www.davidpriver.com">Home</a>
+</p>
+<h1 id="from-tree-walking-to-bytecode">From Tree Walking to Bytecode</h1>
+<p>
+<i><a href="mailto:david@davidpriver.com">David Priver</a>, September 16th, 2026</i>
+</p>
+<article>
+
+<p>
+In my spare time I've been hacking on my <a href="https://github.com/drpriver/DrC">C compiler &amp; interpreter</a>,
+which has been a lot of fun. Here is a big change to the interpreter which I
+thought was cool and ended up paying off bigly in execution time.
+</p>
+<div>
+<h2 id="switching-to-bytecode">Switching to Bytecode</h2>
+<p>
+The original interpreter just directly interpreted the C AST, as that
+was relatively straightforward to do, but it had a lot of limitations that
+I didn't like.
+</p>
+<ol>
+<li>
+Used the C native call stack for interpreted function call boundaries.
+ <ul>
+<li>
+Essentially, every call into an interpreted function would cause an
+ actual recursive function call in the interpreter loop. This
+ was noticeable when trying to run the self-hosted compiler tests
+ with sanitizers enabled. As the tests are aggressively multithreaded,
+ they would run with much smaller stacks so this would lead to stack
+ exhaustion under asan. Switching to bytecode made it easy to just
+ assign to the program counter and we already used a linked-list of
+ interpreter stack frames to represent the interpreted call stack.
+</li>
+</ul>
+</li>
+<li>
+Couldn't do arbitrary control flow inside an expression.
+ <ul>
+<li>
+The original interpreter had a linearized representation for statements
+ (each statement was just a node in a flat array, which was trivial to
+ flatten from a C AST), but expressions were kept in their original tree
+ form. We would recurse down this tree using the host's call stack,
+ which could also lead to native stack exhaustion for highly nested
+ expressions under asan with default pthread worker stack sizes.
+</li>
+<li>
+Because you were in the middle of recursing down a tree, you couldn't
+ do control flow like loops, gotos, ifs, etc. in the middle of evaluating
+ an expression. This is not a problem in standard C, but real system
+ C headers use the <a href="https://gcc.gnu.org/onlinedocs/gcc/Statement-Exprs.html">gnu statement expression extension</a>.
+ As the goal is to use native headers and libraries, this meant we had
+ to implement this extension. Switching to a flat bytecode where
+ statements and expressions are just different operations in a linear
+ array meant that we could express control in the middle of evaluating an
+ expression.
+</li>
+</ul>
+</li>
+<li>
+It was slow
+ <ul>
+<li>
+Not only did the tree interpreter have some significant limitations,
+ it was also just slow. Some casual benchmarks comparing it to cpython
+ (which is not a fast interpreter) showed it was half the speed on
+ tasks like summing numbers or calculating primes. I think python
+ was even faster on mandelbrot, which is kind of embarrassing. Profiling
+ showed that we were doing a lot of semantic work in the middle of the
+ interpreter loop, like evaluating the size of types to how big our
+ expression result buffers needed to be. Some of these problems were
+ because we didn't have a pass after parsing - it would just jump straight
+ from a parsed AST to interpreting it. Adding a lowering pass
+ means a lot of this stuff could be baked into the bytecode instead
+ of looked up at runtime.
+</li>
+</ul>
+</li>
+<li>
+It was wrong
+ <ul>
+<li>
+The tree interpreter also took a lot of shortcuts, especially around
+ things like floating point (evaluating all float in double, which is a
+ valid C <tt>FLT_EVAL_METHOD</tt>, but we are trying to match the
+ specified native target). It did what it had to do, it got the project
+ from just successfully parsing C to actually doing fun interactive things
+ with it. But since we were doing some sema in the middle of
+ interpreting, the best way to fix the correctness issues was to add a
+ lowering pass over the AST, at which point it was easy to just lower to a
+ bytecode.
+</li>
+</ul>
+</li>
+<li>
+JIT was intractable
+ <ul>
+<li>
+The goal of the project is to not interpret C code forever, but to eventually
+ generate native machine code for all functions (which will also allow us to
+ drop libffi and its limitations). Doing that directly from the C AST
+ was going to be too big a pain (I've tried doing that before, it sucks).
+ So I wanted a bytecode/IR format that would be faster to execute but
+ would also map reasonably well to something you could convert to native
+ code.
+</li>
+</ul>
+</li>
+</ol>
+<p>
+Switching from tree-walking to bytecode is a well-tread path. Instead of
+walking the expression trees at runtime, the new design walks the
+statement/expression trees after parsing, lowering it into a flat
+series of instructions. I also wanted to eliminate consulting target
+metadata at execution time, so the bytecode bakes in things like sizes,
+floating point format and bounds checking (as an explicit op) into the format
+itself.
+</p>
+<p>
+So work slowly began on porting all of the needed machinery into a bytecode
+format.  If you're into that kind of thing, you can see the format
+<a href="https://github.com/drpriver/DrC/blob/eee9da6522f3b4cb24d4d9cdc03d002b52223756/C/ci_op.h">here</a>.
+</p>
+</div>
+<div>
+<h2 id="the-bytecode">The Bytecode</h2>
+<p>
+The bytecode is 32 bytes per instruction and packs in what the operation is,
+src location and all the necessary metadata. Immediates up to 16 bytes can be
+stored inline.
+</p>
+<p>
+A simple function like:
+</p>
+<div class="C">
+<pre>
+// foo.c
+int add(int x, int y){
+    return x + y;
+}
+
+</pre>
+</div>
+<p>
+Gets lowered into:
+</p>
+<div>
+<pre>
+$ drc --dis add foo.c
+
+add(int x, int y) -&gt; int{
+  0x00)  [8:12] = [0:4] + [4:8] // foo.c:2:14
+  0x01)  return [8:12]          // foo.c:2:5
+}
+
+</pre>
+</div>
+<p>
+Which is a pretty printed version of the bytecode. Note that the bytecode
+contains src locations (which are optimized to be a pointer-sized value),
+which will be useful when we dynamically generate in-memory debug info for
+the JIT.
+</p>
+<p>
+It is a slot-based design. Slots are sized stack offsets from the frame base.
+Variables and temporaries get fixed space reserved for them in the
+interpreter's call frame. Ops directly load from slots and write to slots.
+The first slots are the function's arguments.
+</p>
+<p>
+So in this example:
+</p>
+<div>
+<pre>
+0x00)  [8:12] = [0:4] + [4:8]
+</pre>
+</div>
+<p>
+We directly read the operands to add from the slot spanning offset 0 to 4
+(<tt>x</tt>, 4 bytes) and from the slot spanning 4 to 8 (<tt>y</tt>, 4
+bytes). Those get added and directly written to the slot spanning 8 to 12.
+The bytecode encodes this is a 4 byte add, the pretty printer elides it as it
+is evident from the slot sizes. Signed and unsigned adds are the same on all
+of our supported targets so there is no separate bytecode.
+</p>
+<div>
+<pre>
+0x01)  return [8:12]
+</pre>
+</div>
+<p>
+The return value is read out of the slot spanning 8 to 12.
+</p>
+<p>
+A more complicated function:
+</p>
+<div class="C">
+<pre>
+long fib(long n){
+    long a = 0, b = 1, c;
+    for(long i = 0; i &lt; n; i++){
+        c = a + b;
+        a = b;
+        b = c;
+    }
+    return a;
+}
+</pre>
+</div>
+<div>
+<pre>
+$ drc --dis fib fib.c
+fib(long n) -&gt; long{
+  0x00)  [8:16] = 0                     // fib.c:2:14
+  0x01)  [16:24] = 1                    // fib.c:2:21
+  0x02)  [32:40] = 0                    // fib.c:3:18
+  0x03)  if !([32:40] &lt; [0:8]) jump 0x9 // fib.c:3:5
+  0x04)  [24:32] = [8:16] + [16:24]     // fib.c:4:15
+  0x05)  [8:16] = [16:24]               // fib.c:5:13
+  0x06)  [16:24] = [24:32]              // fib.c:6:13
+  0x07)  [32:40] = [32:40] +u 1         // fib.c:3:29
+  0x08)  jump 0x3                       // fib.c:3:5
+  0x09)  return [8:16]                  // fib.c:8:5
+}
+</pre>
+</div>
+<p>
+The first 3 instructions are initializing <tt>a</tt>, <tt>b</tt>, and
+<tt>i</tt>. <tt>c</tt> was not initialized so we do nothing (in the
+interpreter, frames are zero-allocated anyway, but this leaves the IR more
+similar to native code).
+</p>
+<p>
+Then we hit the loop condition. We have a specialized fused cmp-jmp
+instruction as it is so common and reading the check out of a slot wouldn't
+actually match most native instructions anyway. This way we can avoid
+materializing an actual boolean slot, just to read it back out again immediately.
+</p>
+<p>
+The loop body does the usual fibonacci arithmetic, then we increment <tt>i</tt>
+using an add with an immediate value (the <tt>u</tt> annotation is a consequence of
+all arithmetic ops being packed into one instruction so it is an add with an
+unsigned immediate, which would matter for other arithmetic ops other than
+add). Finally we jump back to the conditional. The conditional can jump us
+forward to the return.
+</p>
+<p>
+And an example with gnu statement expressions (one of the main motivations):
+</p>
+<div class="C">
+<pre>
+typedef struct Result Result;
+struct Result {
+    _Bool error;
+    int payload;
+};
+Result may_fail(int);
+void abort(void);
+int use_result(int x){
+    // pretend this is the result of macro expansion
+    return ({
+        typeof(may_fail(x)) r = may_fail(x);
+        if(r.error)
+            abort();
+        r.payload;
+    }) + 3;
+}
+</pre>
+</div>
+<div>
+<pre>
+$ drc --dis use_result gnu.c
+use_result(int x) -&gt; int{
+  0x00)  [16:20] = [0:4]                 // gnu.c:11:42
+  0x01)  [4:12] = call may_fail([16:20]) // gnu.c:11:41
+  0x02)  if ![4:5] jump 0x4              // gnu.c:12:9
+  0x03)  call abort()                    // gnu.c:13:18
+  0x04)  [12:16] = [8:12] + 3            // gnu.c:15:8
+  0x05)  return [12:16]                  // gnu.c:10:5
+}
+
+</pre>
+</div>
+<p>
+The 8 byte struct return value of <tt>may_fail()</tt> gets written to the
+slot spanning 4 to 12.  We can then read the 1 byte bool out of the slot and
+use it to jump over the abort. Finally, a read + add with immediate 3 from
+the payload field of the struct is assigned to the slot used for the return
+value.
+</p>
+<p>
+Despite an expression with control flow, local variables and external calls
+appearing in the middle of an add expression in the middle of a return
+statement, the flat IR handles it perfectly.
+</p>
+</div>
+<div>
+<h2 id="speedup">Speedup</h2>
+<p>
+The following C programs were used to measure the bytecode speedup. An
+equivalent python script was also run.  Timings were obtained on my apple
+laptop from 2021 while watching TV and browsing the web, and I ran it a few
+times, so very scientific results. All of the program results/checksums
+were identical. I checked out an old commit for Treewalker that was before
+bytecode work.
+</p>
+<details>
+<summary style="cursor:pointer">
+mandelbrot.c</summary>
+<div>
+<div class="C">
+<pre>
+// mandelbrot.c
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;pthread.h&gt;
+#include &lt;time.h&gt;
+enum {
+    WIDTH      = 800,
+    HEIGHT     = 800,
+    MAX_ITER   = 256,
+    NTHREADS   = 4,
+};
+int iterations[WIDTH * HEIGHT];
+typedef struct WorkItem WorkItem;
+struct WorkItem {
+    int row_start;
+};
+void* worker(void* arg){
+    WorkItem* w = (WorkItem*)arg;
+    for(int py = w-&gt;row_start; py &lt; HEIGHT; py += NTHREADS){
+        for(int px = 0; px &lt; WIDTH; px++){
+            double x0 = (px - WIDTH  / 2.0) * 4.0 / WIDTH;
+            double y0 = (py - HEIGHT / 2.0) * 4.0 / HEIGHT;
+            double x = 0, y = 0;
+            int iter = 0;
+            while(x*x + y*y &lt;= 4.0 &amp;&amp; iter &lt; MAX_ITER){
+                double tmp = x*x - y*y + x0;
+                y = 2*x*y + y0;
+                x = tmp;
+                iter++;
+            }
+            iterations[py * WIDTH + px] = iter;
+        }
+    }
+    return NULL;
+}
+
+int main(){
+    struct timespec t0, t1;
+    clock_gettime(CLOCK_MONOTONIC, &amp;t0);
+    pthread_t threads[NTHREADS];
+    WorkItem items[NTHREADS];
+    for(int i = 0; i &lt; NTHREADS; i++){
+        items[i].row_start = i;
+        pthread_create(&amp;threads[i], NULL, worker, &amp;items[i]);
+    }
+    for(int i = 0; i &lt; NTHREADS; i++)
+        pthread_join(threads[i], NULL);
+    clock_gettime(CLOCK_MONOTONIC, &amp;t1);
+    double elapsed = (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) / 1e9;
+    long checksum = 0;
+    for(int i = 0; i &lt; WIDTH * HEIGHT; i++)
+        checksum += iterations[i];
+    printf("Grid:     %dx%d, max_iter=%d, threads=%d\n", WIDTH, HEIGHT, MAX_ITER, NTHREADS);
+    printf("Checksum: %ld\n", checksum);
+    printf("Time:     %.3f seconds\n", elapsed);
+    return 0;
+}
+</pre>
+</div>
+</div>
+</details>
+<details>
+<summary style="cursor:pointer">
+mandelbrot.py</summary>
+<div>
+<div class="python">
+<pre>
+# mandelbrot.py
+import time
+from multiprocessing import Pool
+WIDTH    = 800
+HEIGHT   = 800
+MAX_ITER = 256
+NTHREADS = 4
+
+def compute_rows(row_start):
+    results = []
+    for py in range(row_start, HEIGHT, NTHREADS):
+        for px in range(WIDTH):
+            x0 = (px - WIDTH  / 2.0) * 4.0 / WIDTH
+            y0 = (py - HEIGHT / 2.0) * 4.0 / HEIGHT
+            x, y = 0.0, 0.0
+            it = 0
+            while x*x + y*y &lt;= 4.0 and it &lt; MAX_ITER:
+                x, y = x*x - y*y + x0, 2*x*y + y0
+                it += 1
+            results.append(it)
+    return results
+
+def main():
+    t0 = time.monotonic()
+    chunks = list(range(NTHREADS))
+    with Pool(NTHREADS) as pool:
+        all_results = pool.map(compute_rows, chunks)
+    t1 = time.monotonic()
+    checksum = sum(sum(r) for r in all_results)
+    print(f"Grid:     {WIDTH}x{HEIGHT}, max_iter={MAX_ITER}, threads={NTHREADS}")
+    print(f"Checksum: {checksum}")
+    print(f"Time:     {t1 - t0:.3f} s")
+
+if __name__ == "__main__":
+    main()
+</pre>
+</div>
+</div>
+</details>
+<details id="sievec">
+<summary style="cursor:pointer">
+sieve.c</summary>
+<div>
+<div class="C">
+<pre>
+// sieve.c
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdbool.h&gt;
+#include &lt;string.h&gt;
+#include &lt;time.h&gt;
+
+typedef struct {
+    bool* data;
+    long length;
+} InterpreterList;
+
+InterpreterList* create_list(long length, bool default_value) {
+    InterpreterList* list = malloc(sizeof *list);
+    list-&gt;data = malloc(sizeof(bool) * length);
+    list-&gt;length = length;
+    memset(list-&gt;data, default_value, length);
+    return list;
+}
+
+void free_list(InterpreterList* list) {
+    free(list-&gt;data);
+    free(list);
+}
+
+long run_sieve(long limit) {
+    InterpreterList* primes = create_list(limit + 1, true);
+    primes-&gt;data[0] = false;
+    primes-&gt;data[1] = false;
+    long p = 2;
+    while(p * p &lt;= limit){
+        if(primes-&gt;data[p]){
+            long i = p * p;
+            while(i &lt;= limit){
+                primes-&gt;data[i] = false;
+                i += p;
+            }
+        }
+        p++;
+    }
+    // Count the primes
+    long count = 0;
+    for(long idx = 0; idx &lt; primes-&gt;length; idx++){
+        if (primes-&gt;data[idx]) {
+            count++;
+        }
+    }
+    free_list(primes);
+    return count;
+}
+
+int main() {
+    long limit = 2000000;
+    struct timespec t0, t1;
+    clock_gettime(CLOCK_MONOTONIC, &amp;t0);
+    long count = run_sieve(limit);
+    clock_gettime(CLOCK_MONOTONIC, &amp;t1);
+    double elapsed = (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) / 1e9;
+    printf("Found %ld primes.\n", count);
+    printf("Execution time: %.3f seconds\n", elapsed);
+    return 0;
+}
+
+</pre>
+</div>
+</div>
+</details>
+<details id="sievepy">
+<summary style="cursor:pointer">
+sieve.py</summary>
+<div>
+<div class="python">
+<pre>
+# sieve.py
+import time
+def run_sieve(limit):
+    primes = bytearray([True]) * (limit + 1)
+    primes[0] = primes[1] = False
+    p = 2
+    while p * p &lt;= limit:
+        if primes[p]:
+            i = p * p
+            while i &lt;= limit:
+                primes[i] = False
+                i += p
+        p += 1
+    count = 0
+    for is_prime in primes:
+        if is_prime:
+            count += 1
+    return count
+
+def main():
+    limit = 2000000
+    start = time.perf_counter()
+    count = run_sieve(limit)
+    end = time.perf_counter()
+    print(f"Found {count} primes.")
+    print(f"Execution time: {end - start:.4f} seconds")
+
+if __name__ == "__main__":
+    main()
+
+</pre>
+</div>
+</div>
+</details>
+<details>
+<summary style="cursor:pointer">
+sum.c</summary>
+<div>
+<div class="C">
+<pre>
+// sum.c
+#include &lt;stdio.h&gt;
+#include &lt;time.h&gt;
+void do_sum(long cap){
+    // volatile as otherwise clang optimizes this out lol
+    volatile long x = 0;
+    for(long i = 0; i &lt; cap; i++)
+        x += i;
+    printf("%ld\n", x);
+}
+int main(){
+    struct timespec t0, t1;
+    clock_gettime(CLOCK_MONOTONIC, &amp;t0);
+    do_sum(100000000);
+    clock_gettime(CLOCK_MONOTONIC, &amp;t1);
+    double elapsed = (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) / 1e9;
+    printf("Execution Time: %.3f seconds\n", elapsed);
+    return 0;
+}
+
+</pre>
+</div>
+</div>
+</details>
+<details>
+<summary style="cursor:pointer">
+sum.py</summary>
+<div>
+<div class="python">
+<pre>
+import time
+# in real code, you just do sum(range(cap)), but
+# we're trying to measure the speed of the interpreter,
+# not the Cpython builtins.
+def do_sum(cap):
+    x = 0;
+    i = 0
+    while i &lt; cap:
+        x += i
+        i += 1
+    print(x)
+
+def main():
+    start = time.perf_counter()
+    do_sum(100000000)
+    end = time.perf_counter()
+    print(f"Execution time: {end - start:.4f} seconds")
+
+if __name__ == '__main__':
+    main()
+
+
+</pre>
+</div>
+</div>
+</details>
+<p>
+"Native" is apple-clang -O0.
+</p>
+<div>
+<table>
+<thead>
+<tr>
+<th>Program
+</th>
+<th>Treewalker
+</th>
+<th>Bytecode
+</th>
+<th>Python 3.10.5
+</th>
+<th>Native
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>mandelbrot
+</td>
+<td>1.640s
+</td>
+<td>0.212s
+</td>
+<td>0.640s
+</td>
+<td>0.031s
+</td>
+</tr>
+<tr>
+<td>sieve
+</td>
+<td>1.016s
+</td>
+<td>0.088s
+</td>
+<td>0.180s
+</td>
+<td>0.016s
+</td>
+</tr>
+<tr>
+<td>sum
+</td>
+<td>7.965s
+</td>
+<td>0.916s
+</td>
+<td>4.0037s
+</td>
+<td>0.094s
+</td>
+</tr>
+</tbody></table>
+</div>
+<p>
+Huge difference! Still far off from native instructions, but we're getting
+there.
+</p>
+</div>
+<div>
+<h2 id="conclusion">Conclusion</h2>
+<p>
+I was originally going to write about multiple things I thought were neat in
+my C compiler. Instead you got to read about how I switched my C
+interpreter from tree-walking to an IR-ish bytecode and got an 8x speedup.
+</p>
+<p>
+The interpreter still needs to be profiled and optimized, but we have ditched
+the native recursion for every expression, encoded sizes in the instructions
+themselves and made unconventional control flow easy to produce. We've also
+set up a better foundation for generating machine code at runtime.
+</p>
+</div>
+</article>
+<div>
+<h2 id="copyright">Copyright</h2>
+<p>
+All code in this article is released into the public domain.
+</p>
+</div>
+</body>
+</html>
