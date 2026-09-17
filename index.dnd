@@ -7,6 +7,7 @@ Welcome to my blog!
 
 Feel free to check out one of the following articles:
 
+- [From Tree Walker to Bytecode | From-Tree-Walker-To-Bytecode]
 - [Fixing C's biggest mistake | fixing-c-biggest-mistake]
 - [Adding reflection to C | adding-reflection-to-C]
 - [Vim macros are overrated | vim-macros]
@@ -73,6 +74,7 @@ WebApps:
   vim-macros = vim-macros-overrated.html
   adding-reflection-to-C = adding-reflection-to-C.html
   fixing-c-biggest-mistake = fixing-c-biggest-mistake.html
+  From-Tree-Walker-to-Bytecode = From-Tree-Walker-to-Bytecode.html
 ::css
   :root {
     color-scheme: light dark;
