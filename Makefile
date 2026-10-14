@@ -66,9 +66,13 @@ include fixing-c-biggest-mistake/fixing-c-biggest-mistake.mak
 # From Tree walker to bytecode interpreter
 include From-Tree-Walker-to-Bytecode/From-Tree-Walker-to-Bytecode.mak
 
+# Func Extending the C Preprocessor - Part 1
+include Fun-Extending-the-C-Preprocessor/Fun-Extending-the-C-Preprocessor.mak
+
 .PHONY: all
 all: $(PAGES)
 
 # rss
 feed.xml: $(PAGES)
 	python3 do_rss.py
+

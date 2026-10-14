@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>Fun-Extending-the-C-Preprocessor</title>
+<style>
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  max-width: 68ch;
+  margin: auto;
+  margin-bottom: 40em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 12px;
+  background-color: #fff;
+  color: #000;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #333;
+    color: #fff;
+  }
+  a:visited {
+    color: #88f;
+  }
+  a {
+    color: #88f;
+  }
+}
+dt {
+  font-weight: bold;
+}
+pre {
+  padding-left: 2em;
+  padding-right: 1em;
+  padding-top: 1ex;
+  padding-bottom: 1ex;
+  background-color: #fdf6e3;
+  border-radius: 16px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  overflow-x: auto;
+  line-height: 125%;
+}
+tt {
+  background-color: #eee;
+  padding: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  pre {
+    background-color: #222;
+  }
+  tt {
+    background-color: #222;
+  }
+}
+pre .enum {
+  font-weight: bold;
+}
+pre .keyword {
+  color: #049407;
+}
+@media (prefers-color-scheme: dark) {
+  pre .keyword {
+    color: #24c427;
+  }
+}
+pre .comment {
+  color: #000;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  pre .comment {
+    color: #fff;
+  }
+}
+pre .literal {
+  color: #2aa198;
+}
+pre .type {
+  color: #de6e00;
+}
+pre .macro {
+  color: #66a;
+}
+pre .func, pre .function {
+  color: #213dde;
+}
+@media (prefers-color-scheme: dark) {
+  pre .func, pre .function {
+    color: #519dde;
+  }
+}
+pre .string {
+  color: #2aa198;
+}
+pre .preproc {
+  color: #777;
+}
+.quoted {
+  margin-left: 2em;
+  border-left: 2px solid grey;
+  padding-left: 8px;
+}
+pre .h {
+  font-weight: bold;
+}
+pre .param {
+  color: #6a6;
+}
+</style>
+</head>
+<body>
+<p>
+<a href="https://www.davidpriver.com">Home</a>
+</p>
+<h1 id="fun-extending-the-c-preprocessor">Fun-Extending-the-C-Preprocessor</h1>
+<p>
+<i><a href="mailto:david@davidpriver.com">David Priver</a>, October 13th, 2026</i>
+</p>
+<article>
+
+<p>
+As I've mentioned in <a href="/fixing-c-biggest-mistake.html">previous</a> <a href="/From-Tree-Walker-to-Bytecode.html">posts</a>, I've been writing my own
+<a href="https://github.com/drpriver/DrC">C2Y Compiler / Interpreter / REPL</a> for fun.
+One of the first things one has to do when writing a C Compiler is to first
+write a C Preprocessor (also known as the CPP). Counter to what most people
+think of the C Preprocessor, it is not a text-to-text translator. Instead
+it is a source to C token translator, with most implementations offering a
+text output to see what it does. Historically, it might have been implemented
+as a text-to-text translator, but the C standard specifies it as a series of
+phases that ends up with C tokens that are consumed by the C parser until you
+eventually end up with a C translation unit.
+</p>
+<p>
+Others have probably written about how to write a C Preprocessor before, so I
+won't focus on that.  Instead I'll focus on some fun ways I've extended the C
+Preprocessor, either to make it easier to use or just because I thought it was
+goofy. I won't list <a href="https://github.com/drpriver/DrC/blob/master/EXTENSIONS.md#preprocessor">all of them</a>, but just the particularly interesting ones.
+</p>
+<div>
+<h2 id="ttprint-tt-ttwhere-tt"><tt>__print()</tt>/<tt>__where()</tt></h2>
+<p>
+The most straightforward extensions: builtin debugging macros.
+</p>
+<p>
+<tt>__print(...)</tt> acts as a preprocessor print function, expanding its arg(s)
+and writing it to stderr, useful for debugging what a macro expands to.
+As you only get exactly what you <tt>__print()</tt>, it can be much easier to
+see what the preprocessor expands to without dumping the entire translation
+unit like with <tt>cpp</tt>.
+</p>
+<div class="console">
+<pre>
+$ printf "#define X 1\n__print(X   X)" | drcpp
+(stdin):2:1: 1   1
+</pre>
+</div>
+<p>
+Ever have trouble figuring out where the heck a macro was defined that is
+expanding in some weird way? Maybe some baroque glibc macro is ruining your life?
+<tt>__where()</tt> is your friend. It writes to stderr where the macro was defined.
+</p>
+<div class="console">
+<pre>
+$ printf "#define X 1\n\n\n\n__where(X)" | drcpp
+(stdin):1:9: info: X defined
+</pre>
+</div>
+</div>
+<div>
+<h2 id="ttmap-tt"><tt>__map()</tt></h2>
+<p>
+Something that occasionally comes up is the need to apply some transformation
+to each argument in a list. Perhaps you want to print a sequence of values
+you have in a preprocessor sequence.  The standard functional way to
+implement this would be to write a recursive function (in the preprocessor a
+function-like macro), but the C standard blocks direct recursion as the
+tokens get "painted blue" and have their expansion suppressed. However, you
+generally don't need arbitrarily long recursion, so you can fake it by
+pumping the recursion yourself for a fixed number of iterations. If you have an
+aversion to disgusting preprocessor abuse, then don't look at this example:
+</p>
+<details>
+<summary style="cursor:pointer">
+I warned you</summary>
+<div>
+<div class="C">
+<pre>
+// map.c
+#define CAT(a, b) CAT_(a, b)
+#define CAT_(a, b) a##b
+#define NARG(...) \
+  NARG_(__VA_ARGS__ __VA_OPT__(,) 8,7,6,5,4,3,2,1,0)
+#define NARG_(_1,_2,_3,_4,_5,_6,_7,_8,N,...) N
+#define MAP_0(m)
+#define MAP_1(m, x)      m(x)
+#define MAP_2(m, x, ...) m(x) MAP_1(m, __VA_ARGS__)
+#define MAP_3(m, x, ...) m(x) MAP_2(m, __VA_ARGS__)
+#define MAP_4(m, x, ...) m(x) MAP_3(m, __VA_ARGS__)
+#define MAP_5(m, x, ...) m(x) MAP_4(m, __VA_ARGS__)
+#define MAP_6(m, x, ...) m(x) MAP_5(m, __VA_ARGS__)
+#define MAP_7(m, x, ...) m(x) MAP_6(m, __VA_ARGS__)
+#define MAP_8(m, x, ...) m(x) MAP_7(m, __VA_ARGS__)
+#define __map(m, ...) \
+  CAT(MAP_, NARG(__VA_ARGS__))(m __VA_OPT__(,) __VA_ARGS__)
+int x = 1;
+int y = 2;
+int z = 3;
+
+#define PRINTINT(x) printf(#x " = %d\n", x);
+int printf(const char*, ...);
+int main(){
+    __map(PRINTINT, 1, 2, 3, 4, x, y, z)
+}
+</pre>
+</div>
+<p>
+Which expands to (whitespace inserted for readability):
+</p>
+<div class="C">
+<pre>
+// map.i
+int x = 1;
+int y = 2;
+int z = 3;
+int printf(const char*, ...);
+int main(){
+    printf("1" " = %d\n", 1); // 1 = 1
+    printf("2" " = %d\n", 2); // 2 = 2
+    printf("3" " = %d\n", 3); // 3 = 3
+    printf("4" " = %d\n", 4); // 4 = 4
+    printf("x" " = %d\n", x); // x = 1
+    printf("y" " = %d\n", y); // y = 2
+    printf("z" " = %d\n", z); // z = 3
+}
+</pre>
+</div>
+</div>
+</details>
+<p>
+This is useful, but obviously pretty disgusting and is generally quite slow as you
+are abusing preprocessor expansion, which has to scan and expand each argument of
+each function-like macro over and over again. So I added <tt>__map(macro, ...)</tt> to my C
+preprocessor:
+</p>
+<p>
+With a builtin <tt>__map()</tt>, the above example simplifies to just:
+</p>
+<div class="C">
+<pre>
+int x = 1;
+int y = 2;
+int z = 3;
+#define PRINTINT(x) printf(#x " = %d\n", x);
+int printf(const char*, ...);
+int main(){
+    __map(PRINTINT, 1, 2, 3, 4, x, y, z)
+}
+</pre>
+</div>
+<p>
+Now you don't have to mess around with faking recursion: it can apply the
+macro to each argument once in a linear scan.  And you have no arbitrary
+limit on how many items you can map!
+</p>
+</div>
+<div>
+<h2 id="ttvacount-tt"><tt>__VA_COUNT__</tt></h2>
+<p>
+C23 made working with variadic macros more convenient and powerful with
+<tt>__VA_OPT__()</tt>, but some use-cases remain difficult. As demonstrated in the
+previous section, it can be useful to "overload" a macro by its arity, but
+this requires gross manual preprocessor pumping.
+</p>
+<p>
+Another use case is passing a count + pointer to a function if your compiler
+still hasn't <a href="/fixing-c-biggest-mistake.html">fixed C's biggest mistake</a>, or a param count to a variadic
+function.
+</p>
+<div class="C">
+<pre>
+// sum.c
+#define CAT(a, b) CAT_(a, b)
+#define CAT_(a, b) a##b
+#define NARG(...) \
+  NARG_(__VA_ARGS__ __VA_OPT__(,) 8,7,6,5,4,3,2,1,0)
+#define NARG_(_1,_2,_3,_4,_5,_6,_7,_8,N,...) N
+int sum(size_t count, int* data){
+    int result = 0;
+    for(size_t i = 0; i &lt; count; i++){
+        result += data[i];
+    }
+    return result;
+}
+#define sum(...) sum(NARG(__VA_ARGS__), (int[]){__VA_ARGS__})
+int printf(const char*, ...);
+int main(){
+    printf("%d\n", sum(1,2,3)); // 6
+    printf("%d\n", sum(4,5)); // 9
+}
+</pre>
+</div>
+<p>
+Instead of going through all of this nonsense to just get the number of
+variadic arguments (which the cpp already has!), I added a builtin macro
+<tt>__VA_COUNT__</tt>, so you can just get the count of variadic arguments
+directly.
+</p>
+<div class="C">
+<pre>
+// sum-drc.c
+int sum(size_t count, int* data){
+    int result = 0;
+    for(size_t i = 0; i &lt; count; i++){
+        result += data[i];
+    }
+    return result;
+}
+#define sum(...) sum(__VA_COUNT__, (int[]){__VA_ARGS__})
+int printf(const char*, ...);
+int main(){
+    printf("%d\n", sum(1,2,3)); // 6
+    printf("%d\n", sum(4,5)); // 9
+}
+</pre>
+</div>
+<p>
+Nicer and faster!
+</p>
+</div>
+<div>
+<h2 id="conclusion">Conclusion</h2>
+<p>
+The C Preprocessor is a powerful tool, but requires some unreadable dark
+magic to really take advantage of it. This isn't inherent to what you want to
+do with it though - it is merely a consequence of its underdeveloped
+machinery. With some extensions, we can make the CPP more powerful while
+also improving readability and making it more enjoyable to use.
+</p>
+<p>
+I have more to talk about, including some true dark magic like mutable
+preprocessor state, but that's it for this post!
+</p>
+</div>
+</article>
+<div>
+<h2 id="copyright">Copyright</h2>
+<p>
+All code in this article is released into the public domain.
+</p>
+</div>
+</body>
+</html>
