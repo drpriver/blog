@@ -5034,5 +5034,346 @@ All code in this article is released into the public domain.
 &lt;/div&gt;
 &lt;/body&gt;
 &lt;/html&gt;
-</description><pubDate>Wed, 14 Oct 2026 04:50:53 GMT</pubDate><link>https://www.davidpriver.com/Fun-Extending-the-C-Preprocessor.html</link><author>david@davidpriver.com</author></item></channel>
+</description><pubDate>Wed, 14 Oct 2026 04:50:53 GMT</pubDate><link>https://www.davidpriver.com/Fun-Extending-the-C-Preprocessor.html</link><author>david@davidpriver.com</author></item><item><title>Understanding VLAs in C</title><description>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+&lt;meta charset="UTF-8"&gt;
+&lt;meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"&gt;
+&lt;title&gt;Understanding VLAs in C&lt;/title&gt;
+&lt;style&gt;
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  max-width: 68ch;
+  margin: auto;
+  margin-bottom: 40em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 12px;
+  background-color: #fff;
+  color: #000;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #333;
+    color: #fff;
+  }
+  a:visited {
+    color: #88f;
+  }
+  a {
+    color: #88f;
+  }
+}
+dt {
+  font-weight: bold;
+}
+pre {
+  padding-left: 2em;
+  padding-right: 1em;
+  padding-top: 1ex;
+  padding-bottom: 1ex;
+  background-color: #fdf6e3;
+  border-radius: 16px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  overflow-x: auto;
+  line-height: 125%;
+}
+tt {
+  background-color: #eee;
+  padding: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  pre {
+    background-color: #222;
+  }
+  tt {
+    background-color: #222;
+  }
+}
+pre .enum {
+  font-weight: bold;
+}
+pre .keyword {
+  color: #049407;
+}
+@media (prefers-color-scheme: dark) {
+  pre .keyword {
+    color: #24c427;
+  }
+}
+pre .comment {
+  color: #000;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  pre .comment {
+    color: #fff;
+  }
+}
+pre .literal {
+  color: #2aa198;
+}
+pre .type {
+  color: #de6e00;
+}
+pre .macro {
+  color: #66a;
+}
+pre .func, pre .function {
+  color: #213dde;
+}
+@media (prefers-color-scheme: dark) {
+  pre .func, pre .function {
+    color: #519dde;
+  }
+}
+pre .string {
+  color: #2aa198;
+}
+pre .preproc {
+  color: #777;
+}
+.quoted {
+  margin-left: 2em;
+  border-left: 2px solid grey;
+  padding-left: 8px;
+}
+pre .h {
+  font-weight: bold;
+}
+pre .param {
+  color: #6a6;
+}
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;p&gt;
+&lt;a href="https://www.davidpriver.com"&gt;Home&lt;/a&gt;
+&lt;/p&gt;
+&lt;h1 id="understanding-vlas-in-c"&gt;Understanding VLAs in C&lt;/h1&gt;
+&lt;p&gt;
+&lt;i&gt;&lt;a href="mailto:david@davidpriver.com"&gt;David Priver&lt;/a&gt;, October 17th, 2026&lt;/i&gt;
+&lt;/p&gt;
+&lt;article&gt;
+
+&lt;p&gt;
+Variable Length Arrays (or VLAs) are a somewhat maligned feature
+of C added in the C99 standard. For a while I didn't really understand them,
+but while working on my &lt;a href="https://github.com/drpriver/DrC"&gt;C interpreter&lt;/a&gt;, I was reaching the point where
+I needed to add this feature. A VLA is an array type whose dimension
+is a runtime expression instead of a constant. It looks something like
+this:
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="type"&gt;int&lt;/span&gt; work(&lt;span class="type"&gt;int&lt;/span&gt; n){
+    &lt;span class="type"&gt;int&lt;/span&gt; buffer[n]; &lt;span class="comment"&gt;// Not a constant dimension!&lt;/span&gt;
+    &lt;span class="keyword"&gt;for&lt;/span&gt;(&lt;span class="type"&gt;int&lt;/span&gt; i = &lt;span class="literal"&gt;0&lt;/span&gt;; i &amp;lt; n; i++){
+        do_something(&amp;amp;buffer[i]);
+    }
+    &lt;span class="keyword"&gt;return&lt;/span&gt; buffer[n-&lt;span class="literal"&gt;1&lt;/span&gt;];
+}
+&lt;/pre&gt;
+&lt;p&gt;
+When I first saw this feature, I assumed it was just syntactic sugar
+over a call to &lt;tt&gt;alloca()&lt;/tt&gt;. In other words, the above would desugar
+into something like:
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="type"&gt;int&lt;/span&gt; work(&lt;span class="type"&gt;int&lt;/span&gt; n){
+    &lt;span class="type"&gt;int&lt;/span&gt; *buffer = alloca(n * &lt;span class="keyword"&gt;sizeof&lt;/span&gt; *buffer);
+    &lt;span class="comment"&gt;// ...&lt;/span&gt;
+}
+&lt;/pre&gt;
+&lt;p&gt;
+But that is not at all the case, for several reasons:
+&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+The bounds of the VLA are set when execution reaches that point.
+ Modifying &lt;tt&gt;n&lt;/tt&gt; doesn't change the bounds of &lt;tt&gt;buffer&lt;/tt&gt;. So you can't just reuse
+ &lt;tt&gt;n&lt;/tt&gt; when doing &lt;tt&gt;sizeof()&lt;/tt&gt;.
+&lt;/li&gt;
+&lt;li&gt;
+The result of &lt;tt&gt;alloca()&lt;/tt&gt; has function lifetime, but a VLA
+ has block lifetime, like a regular array. This means VLAs in different loop
+ iterations have different lifetimes. And because the bounds is set when
+ execution actually reaches the VLA, you can't just re-use the allocation
+ directly. And if you actually did just call &lt;tt&gt;alloca()&lt;/tt&gt; each time, you could
+ exhaust your stack in a loop.
+&lt;/li&gt;
+&lt;li&gt;
+The bounds is allowed to have side-effects!
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;pre&gt;
+&lt;span class="type"&gt;int&lt;/span&gt; unexpected(&lt;span class="type"&gt;int&lt;/span&gt; n){
+    &lt;span class="comment"&gt;// has side effects, but is only evaluated once!&lt;/span&gt;
+    &lt;span class="type"&gt;int&lt;/span&gt; buffer[&lt;span class="func"&gt;printf&lt;/span&gt;(&lt;span class="literal"&gt;"%d\n"&lt;/span&gt;, n)];
+
+    &lt;span class="comment"&gt;// _Countof buffer = cached result of `printf()`;&lt;/span&gt;
+    &lt;span class="keyword"&gt;for&lt;/span&gt;(&lt;span class="type"&gt;size_t&lt;/span&gt; i = &lt;span class="literal"&gt;0&lt;/span&gt;; i &amp;lt; &lt;span class="keyword"&gt;_Countof&lt;/span&gt; buffer; i++){
+        &lt;span class="comment"&gt;// ...&lt;/span&gt;
+    }
+    &lt;span class="comment"&gt;// ...&lt;/span&gt;
+}
+&lt;/pre&gt;
+&lt;p&gt;
+Another of the oddities of VLAs: they can make &lt;tt&gt;sizeof()&lt;/tt&gt; and &lt;tt&gt;typedef&lt;/tt&gt; have
+side effects.
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="type"&gt;void&lt;/span&gt; whoa(&lt;span class="type"&gt;void&lt;/span&gt;){
+    &lt;span class="comment"&gt;// No statements in this function&lt;/span&gt;
+    &lt;span class="comment"&gt;// `typedef` is by definition a declaration.&lt;/span&gt;
+    &lt;span class="keyword"&gt;typedef&lt;/span&gt; &lt;span class="type"&gt;int&lt;/span&gt; w[&lt;span class="func"&gt;printf&lt;/span&gt;(&lt;span class="literal"&gt;"%s\n"&lt;/span&gt;, &lt;span class="keyword"&gt;__func__&lt;/span&gt;)];
+    &lt;span class="comment"&gt;// and yet...&lt;/span&gt;
+}
+&lt;span class="type"&gt;int&lt;/span&gt; main(){
+    whoa(); &lt;span class="comment"&gt;// prints "whoa"&lt;/span&gt;
+}
+&lt;/pre&gt;
+&lt;p&gt;
+And function definitions can have side effects in the parameters!
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="type"&gt;void&lt;/span&gt; what(&lt;span class="type"&gt;int&lt;/span&gt; n, &lt;span class="type"&gt;int&lt;/span&gt; x[&lt;span class="func"&gt;printf&lt;/span&gt;(&lt;span class="literal"&gt;"%d\n"&lt;/span&gt;, n)]){
+  &lt;span class="comment"&gt;// empty body...&lt;/span&gt;
+}
+&lt;span class="type"&gt;int&lt;/span&gt; main(){
+    what(&lt;span class="literal"&gt;4&lt;/span&gt;, &lt;span class="literal"&gt;0&lt;/span&gt;); &lt;span class="comment"&gt;// 4&lt;/span&gt;
+    what(&lt;span class="literal"&gt;2&lt;/span&gt;, &lt;span class="literal"&gt;0&lt;/span&gt;); &lt;span class="comment"&gt;// 2&lt;/span&gt;
+}
+&lt;/pre&gt;
+&lt;p&gt;
+The last one is kind of hard to understand. Where is the &lt;tt&gt;printf()&lt;/tt&gt; evaluated?
+How is &lt;tt&gt;n&lt;/tt&gt; visible?
+&lt;/p&gt;
+&lt;p&gt;
+To understand this, you kind of need to understand pre-ANSI C. Once upon a time,
+functions were defined as thus:
+&lt;/p&gt;
+&lt;pre&gt;
+add(a, b) &lt;span class="comment"&gt;// return-type defaults to int&lt;/span&gt;
+  &lt;span class="type"&gt;int&lt;/span&gt; a; &lt;span class="comment"&gt;// parameter scope&lt;/span&gt;
+  &lt;span class="type"&gt;int&lt;/span&gt; b;
+  {
+    &lt;span class="keyword"&gt;return&lt;/span&gt; a + b;
+  }
+&lt;/pre&gt;
+&lt;p&gt;
+Newer versions of the standard have removed support for this old-fashioned way
+of defining functions, but the way that the scope of parameters was defined was
+sort of rooted in this old model. When you parse the parameter list, those
+params go into an implicit parameter scope, like with those K&amp;amp;R functions.  So
+this means that in our &lt;tt&gt;what()&lt;/tt&gt; function up above, &lt;tt&gt;n&lt;/tt&gt; has
+already been declared by the time we get to &lt;tt&gt;x&lt;/tt&gt; and we have a scope to
+put our side-effecting &lt;tt&gt;printf()&lt;/tt&gt; call into: the parameter scope. so
+that's where it goes.
+&lt;/p&gt;
+&lt;p&gt;
+Oh and by the way, despite being declared as a VLA and having a side effect
+when you call this function, the type of &lt;tt&gt;x&lt;/tt&gt; is still adjusted to a
+pointer, just like a normal array parameter. So we have a side effect
+expression that is used to determine a bounds, but which is not used and just
+leaves the &lt;tt&gt;printf()&lt;/tt&gt; behind.
+&lt;/p&gt;
+&lt;p&gt;
+Oh and even more fun, &lt;tt&gt;printf()&lt;/tt&gt; can return &lt;tt&gt;-1&lt;/tt&gt; and a negative
+VLA bounds is undefined behavior, so IO errors can cause undefined behavior in
+your parameter list!
+&lt;/p&gt;
+&lt;div&gt;
+&lt;h2 id="the-realization"&gt;The Realization&lt;/h2&gt;
+&lt;p&gt;
+At this point I realized I was dealing with an entirely different beast than
+just sugar for &lt;tt&gt;alloca()&lt;/tt&gt; and I couldn't trivially rewrite their
+declarations in such a way. I had also recently implemented the
+&lt;tt&gt;_Defer&lt;/tt&gt; proposal for C2Y in my interpreter, which gave me the missing
+piece of the puzzle: I could use the same cleanup mechanics I had for
+&lt;tt&gt;_Defer&lt;/tt&gt; for deallocating the VLA's buffer.
+&lt;/p&gt;
+&lt;p&gt;
+I won't go into all of the rules for VLAs (read the draft standard), but
+in my compiler's design I could desugar a VLA usage like:
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="type"&gt;int&lt;/span&gt; frobnicate(...){
+  &lt;span class="comment"&gt;// ...&lt;/span&gt;
+  &lt;span class="keyword"&gt;if&lt;/span&gt;(cond){
+    &lt;span class="keyword"&gt;typedef&lt;/span&gt; &lt;span class="type"&gt;int&lt;/span&gt; A[&lt;span class="func"&gt;printf&lt;/span&gt;(&lt;span class="literal"&gt;"%d\n"&lt;/span&gt;, &lt;span class="literal"&gt;4&lt;/span&gt;)];
+    &lt;span class="type"&gt;int&lt;/span&gt; x = &lt;span class="func"&gt;printf&lt;/span&gt;(&lt;span class="literal"&gt;"sizeof(A) = %zu\n"&lt;/span&gt;, &lt;span class="keyword"&gt;sizeof&lt;/span&gt;(A));
+    A buff;
+    frizzle(buff, &lt;span class="keyword"&gt;_Countof&lt;/span&gt; buff);
+  }
+  &lt;span class="comment"&gt;// ...&lt;/span&gt;
+}
+&lt;/pre&gt;
+&lt;p&gt;
+Into something like:
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="type"&gt;int&lt;/span&gt; frobnicate(...){
+  &lt;span class="comment"&gt;// ...&lt;/span&gt;
+  &lt;span class="keyword"&gt;if&lt;/span&gt;(cond){
+     &lt;span class="type"&gt;size_t&lt;/span&gt; _A_countof = &lt;span class="func"&gt;printf&lt;/span&gt;(&lt;span class="literal"&gt;"%d\n"&lt;/span&gt;, &lt;span class="literal"&gt;4&lt;/span&gt;);
+     &lt;span class="type"&gt;int&lt;/span&gt; x = &lt;span class="func"&gt;printf&lt;/span&gt;(&lt;span class="literal"&gt;"sizeof(A) = %zu\n"&lt;/span&gt;,
+                    &lt;span class="keyword"&gt;sizeof&lt;/span&gt;(&lt;span class="type"&gt;int&lt;/span&gt;)*_A_countof);
+     _Stack_mark _mark = __save_stack();
+     &lt;span class="type"&gt;int&lt;/span&gt; *_buff_backing = alloca(&lt;span class="keyword"&gt;sizeof&lt;/span&gt;(&lt;span class="type"&gt;int&lt;/span&gt;)*_A_countof);
+     _Defer __restore_stack(_mark);
+     frizzle(_buff_backing, _A_countof);
+  }
+  &lt;span class="comment"&gt;// ...&lt;/span&gt;
+}
+&lt;/pre&gt;
+&lt;p&gt;
+And this would have the correct semantics:
+&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+Bounds is evaluated once and cached in a hidden local variable.
+&lt;/li&gt;
+&lt;li&gt;
+Bounds evaluates any side effects exactly once.
+&lt;/li&gt;
+&lt;li&gt;
+If somehow we enter this code again, the bounds gets re-evalauted as normal.
+&lt;/li&gt;
+&lt;li&gt;
+&lt;tt&gt;_Defer&lt;/tt&gt; cleanup with stack save/restore gives us the correct block
+ lifetime semantics and ensures the storage gets recycled if we
+ &lt;tt&gt;goto&lt;/tt&gt; or whatever other control flow.
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="conclusion"&gt;Conclusion&lt;/h2&gt;
+&lt;p&gt;
+VLAs are weird, but with a bit of creativity we can figure out a reasonable
+runtime representation of them that doesn't break a normal C execution model.
+I still personally avoid them due to portability concerns (I doubt MSVC will
+ever support them, but who knows, maybe they'll read this post and realize
+it's not that hard to support), but if you want to use them in &lt;a href="https://github.com/drpriver/DrC"&gt;DrC&lt;/a&gt;, now you
+can!
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;/article&gt;
+&lt;div&gt;
+&lt;h2 id="copyright"&gt;Copyright&lt;/h2&gt;
+&lt;p&gt;
+All code in this article is released into the public domain.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</description><pubDate>Sat, 17 Oct 2026 23:51:11 GMT</pubDate><link>https://www.davidpriver.com/Understanding-VLAs-in-C.html</link><author>david@davidpriver.com</author></item></channel>
 </rss>

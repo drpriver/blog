@@ -1,0 +1,22 @@
+::js
+  // Pass 1 exports inline C; pass 2 loads cdoc's highlighted HTML.
+  const blocks = ctx.select_nodes({type: NodeType.PRE, classes: ['C']});
+  const sources = blocks.map(block => block.children.map(line => line.header).join('\n'));
+  if(Args && Args.extract_c){
+    // write_file uses the process working directory; load_file uses ctx.base.
+    FileSystem.write_file(ctx.base + '/inline-c.json', JSON.stringify(sources));
+  }
+  else {
+    const highlighted = JSON.parse(FileSystem.load_file('inline-c.html.json'));
+    if(highlighted.length !== blocks.length)
+      throw new Error('Inline C highlighting is stale; rebuild the post.');
+    for(let i = 0; i < blocks.length; i++){
+      const block = blocks[i];
+      if(highlighted[i].source !== sources[i])
+        block.err('Inline C highlighting is stale; rebuild the post.');
+      for(const child of block.children) child.detach();
+      block.type = NodeType.RAW;
+      block.add_child('<pre>\n' + highlighted[i].html + '</pre>');
+    }
+  }
+  //endjs

@@ -37,6 +37,8 @@ def main() -> None:
         pubdate.text = pubtext
         link = SubElement(item, 'link')
         link.text = 'https://www.davidpriver.com/'+page
+        guid = SubElement(item, 'guid', isPermaLink='true')
+        guid.text = link.text
         author = SubElement(item, 'author')
         author.text = 'david@davidpriver.com'
 

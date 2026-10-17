@@ -38,10 +38,11 @@ def run(name:str, lang:Lang, description:str|None) -> None:
         Lang.Plain:  plaintemplate,
         Lang.D: dtemplate,
     }[lang](name)
-    with open('Makefile', 'a') as fp:
+    with open('posts.mak', 'a') as fp:
+        print(file=fp)
         if description:
-            print(f' # {description}', file=fp)
-        print(f'\ninclude {name}/{name}.mak', file=fp)
+            print(f'# {description}', file=fp)
+        print(f'include {name}/{name}.mak', file=fp)
     try:
         with open('.vimrc', 'r') as fp:
             vimrc = fp.read().strip()
@@ -58,7 +59,11 @@ build/{name}/%.c.html: {name}/%.c | build/{name}
 \tpython3 -m cdoc $< -o $@
 build/{name}/%.h.html: {name}/%.h | build/{name}
 \tpython3 -m cdoc $< -o $@
-build/{name}.html: {name}/{name}.dnd | build Depends/build build/{name}
+build/{name}/inline-c.html.json: {name}/{name}.dnd highlight-c.dnd highlight_c.py cdoc.py | build/{name}
+\tdndc $< --dont-write --allow-js-write --jsargs '{{"extract_c":true}}' -C build/{name}
+\tpython3 highlight_c.py build/{name}/inline-c.json $@
+
+build/{name}.html: {name}/{name}.dnd build/{name}/inline-c.html.json highlight-c.dnd | build Depends/build build/{name}
 \tdndc $< -o $@ -d Depends/$@.dep -C build/{name}
 
 PAGES+=docs/{name}.html
@@ -70,6 +75,8 @@ PAGES+=docs/{name}.html
             print(arg, file=fp)
         p('::css #import')
         p('  ../../c.css')
+        p('::import')
+        p('  ../../highlight-c.dnd')
         p('::js')
         p("  let wrapped = ctx.select_nodes({attributes:['wrapped']});")
         p('  for(let w of wrapped){')

@@ -224,7 +224,7 @@ class DocWriter:
             return f'<span class="comment">{text}</span>'
         ident = self.name_to_ident.get(spell)
         if ident is None:
-            if kind == cindex.TokenKind.KEYWORD:
+            if kind == cindex.TokenKind.KEYWORD or spell in {'_Countof'}:
                 return f'<span class="keyword">{text}</span>'
             if kind == cindex.TokenKind.LITERAL:
                 return f'<span class="literal">{text}</span>'
@@ -254,7 +254,7 @@ class DocWriter:
         for d in deps:
             print(d+':', file=outfp)
 
-def do_tags(arguments:List[str], source_file:str, compiler:str) -> DocWriter:
+def do_tags(arguments:List[str], source_file:str, compiler:str, snippet:bool = False) -> DocWriter:
     identifiers = {} # type: Dict[str, Ident]
     def t(s:str) -> None:
         identifiers[s] = Ident(Kinds.type, s)
@@ -279,13 +279,16 @@ def do_tags(arguments:List[str], source_file:str, compiler:str) -> DocWriter:
     except Exception as e:
         raise Exception(str(e) + f' source_file: {source_file}')
     errors = [d for d in tu.diagnostics if d.severity in (Diagnostic.Error, Diagnostic.Fatal)]
-    if errors:
+    if errors and not snippet:
         raise Exception("File '{}' failed clang's parsing and type-checking:\n {}\n\nargs was {}".format(tu.spelling, '\n'.join(['{}:{}:{}: {}'.format(d.location.file, d.location.line, d.location.column, d.spelling) for d in errors]), clang_args))
 
     source_files = [normpath(tu.spelling)]
 
-    for c in tu.cursor.get_children():
-        do_cursor(c, source_files, identifiers)
+    # Snippets can contain pseudocode or unsupported extensions. Use lexical
+    # highlighting without relying on a valid AST or emitting definition IDs.
+    if not snippet:
+        for c in tu.cursor.get_children():
+            do_cursor(c, source_files, identifiers)
     with open(source_file) as fp:
         text = fp.read()
     writer = DocWriter(identifiers, source_file, text)
@@ -380,13 +383,13 @@ def should_tag_children(cursor) -> bool:
         CursorKind.UNEXPOSED_DECL.value,
     }
 
-def run(file:str, outfile:str, dep_file:Optional[str], cflags:List[str]) -> None:
+def run(file:str, outfile:str, dep_file:Optional[str], cflags:List[str], snippet:bool = False) -> None:
     file = os.path.relpath(file)
     args = ['-x', 'c', file]
     if cflags:
         args.extend(cflags)
     args = fix_args(args, file)
-    writer = do_tags(args, file, 'clang')
+    writer = do_tags(args, file, 'clang', snippet=snippet)
     if not outfile:
         writer.write(sys.stdout)
         return
@@ -401,6 +404,7 @@ def main() -> None:
     parser.add_argument('file')
     parser.add_argument('-o', '--outfile', required=True)
     parser.add_argument('-d', '--dep-file')
+    parser.add_argument('--snippet', action='store_true', help='for incomplete examples')
     parser.add_argument('--cflags', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     run(**vars(args))

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>Understanding VLAs in C</title>
+<style>
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  max-width: 68ch;
+  margin: auto;
+  margin-bottom: 40em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 12px;
+  background-color: #fff;
+  color: #000;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #333;
+    color: #fff;
+  }
+  a:visited {
+    color: #88f;
+  }
+  a {
+    color: #88f;
+  }
+}
+dt {
+  font-weight: bold;
+}
+pre {
+  padding-left: 2em;
+  padding-right: 1em;
+  padding-top: 1ex;
+  padding-bottom: 1ex;
+  background-color: #fdf6e3;
+  border-radius: 16px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  overflow-x: auto;
+  line-height: 125%;
+}
+tt {
+  background-color: #eee;
+  padding: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  pre {
+    background-color: #222;
+  }
+  tt {
+    background-color: #222;
+  }
+}
+pre .enum {
+  font-weight: bold;
+}
+pre .keyword {
+  color: #049407;
+}
+@media (prefers-color-scheme: dark) {
+  pre .keyword {
+    color: #24c427;
+  }
+}
+pre .comment {
+  color: #000;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  pre .comment {
+    color: #fff;
+  }
+}
+pre .literal {
+  color: #2aa198;
+}
+pre .type {
+  color: #de6e00;
+}
+pre .macro {
+  color: #66a;
+}
+pre .func, pre .function {
+  color: #213dde;
+}
+@media (prefers-color-scheme: dark) {
+  pre .func, pre .function {
+    color: #519dde;
+  }
+}
+pre .string {
+  color: #2aa198;
+}
+pre .preproc {
+  color: #777;
+}
+.quoted {
+  margin-left: 2em;
+  border-left: 2px solid grey;
+  padding-left: 8px;
+}
+pre .h {
+  font-weight: bold;
+}
+pre .param {
+  color: #6a6;
+}
+</style>
+</head>
+<body>
+<p>
+<a href="https://www.davidpriver.com">Home</a>
+</p>
+<h1 id="understanding-vlas-in-c">Understanding VLAs in C</h1>
+<p>
+<i><a href="mailto:david@davidpriver.com">David Priver</a>, October 17th, 2026</i>
+</p>
+<article>
+
+<p>
+Variable Length Arrays (or VLAs) are a somewhat maligned feature
+of C added in the C99 standard. For a while I didn't really understand them,
+but while working on my <a href="https://github.com/drpriver/DrC">C interpreter</a>, I was reaching the point where
+I needed to add this feature. A VLA is an array type whose dimension
+is a runtime expression instead of a constant. It looks something like
+this:
+</p>
+<pre>
+<span class="type">int</span> work(<span class="type">int</span> n){
+    <span class="type">int</span> buffer[n]; <span class="comment">// Not a constant dimension!</span>
+    <span class="keyword">for</span>(<span class="type">int</span> i = <span class="literal">0</span>; i &lt; n; i++){
+        do_something(&amp;buffer[i]);
+    }
+    <span class="keyword">return</span> buffer[n-<span class="literal">1</span>];
+}
+</pre>
+<p>
+When I first saw this feature, I assumed it was just syntactic sugar
+over a call to <tt>alloca()</tt>. In other words, the above would desugar
+into something like:
+</p>
+<pre>
+<span class="type">int</span> work(<span class="type">int</span> n){
+    <span class="type">int</span> *buffer = alloca(n * <span class="keyword">sizeof</span> *buffer);
+    <span class="comment">// ...</span>
+}
+</pre>
+<p>
+But that is not at all the case, for several reasons:
+</p>
+<ol>
+<li>
+The bounds of the VLA are set when execution reaches that point.
+ Modifying <tt>n</tt> doesn't change the bounds of <tt>buffer</tt>. So you can't just reuse
+ <tt>n</tt> when doing <tt>sizeof()</tt>.
+</li>
+<li>
+The result of <tt>alloca()</tt> has function lifetime, but a VLA
+ has block lifetime, like a regular array. This means VLAs in different loop
+ iterations have different lifetimes. And because the bounds is set when
+ execution actually reaches the VLA, you can't just re-use the allocation
+ directly. And if you actually did just call <tt>alloca()</tt> each time, you could
+ exhaust your stack in a loop.
+</li>
+<li>
+The bounds is allowed to have side-effects!
+</li>
+</ol>
+<pre>
+<span class="type">int</span> unexpected(<span class="type">int</span> n){
+    <span class="comment">// has side effects, but is only evaluated once!</span>
+    <span class="type">int</span> buffer[<span class="func">printf</span>(<span class="literal">"%d\n"</span>, n)];
+
+    <span class="comment">// _Countof buffer = cached result of `printf()`;</span>
+    <span class="keyword">for</span>(<span class="type">size_t</span> i = <span class="literal">0</span>; i &lt; <span class="keyword">_Countof</span> buffer; i++){
+        <span class="comment">// ...</span>
+    }
+    <span class="comment">// ...</span>
+}
+</pre>
+<p>
+Another of the oddities of VLAs: they can make <tt>sizeof()</tt> and <tt>typedef</tt> have
+side effects.
+</p>
+<pre>
+<span class="type">void</span> whoa(<span class="type">void</span>){
+    <span class="comment">// No statements in this function</span>
+    <span class="comment">// `typedef` is by definition a declaration.</span>
+    <span class="keyword">typedef</span> <span class="type">int</span> w[<span class="func">printf</span>(<span class="literal">"%s\n"</span>, <span class="keyword">__func__</span>)];
+    <span class="comment">// and yet...</span>
+}
+<span class="type">int</span> main(){
+    whoa(); <span class="comment">// prints "whoa"</span>
+}
+</pre>
+<p>
+And function definitions can have side effects in the parameters!
+</p>
+<pre>
+<span class="type">void</span> what(<span class="type">int</span> n, <span class="type">int</span> x[<span class="func">printf</span>(<span class="literal">"%d\n"</span>, n)]){
+  <span class="comment">// empty body...</span>
+}
+<span class="type">int</span> main(){
+    what(<span class="literal">4</span>, <span class="literal">0</span>); <span class="comment">// 4</span>
+    what(<span class="literal">2</span>, <span class="literal">0</span>); <span class="comment">// 2</span>
+}
+</pre>
+<p>
+The last one is kind of hard to understand. Where is the <tt>printf()</tt> evaluated?
+How is <tt>n</tt> visible?
+</p>
+<p>
+To understand this, you kind of need to understand pre-ANSI C. Once upon a time,
+functions were defined as thus:
+</p>
+<pre>
+add(a, b) <span class="comment">// return-type defaults to int</span>
+  <span class="type">int</span> a; <span class="comment">// parameter scope</span>
+  <span class="type">int</span> b;
+  {
+    <span class="keyword">return</span> a + b;
+  }
+</pre>
+<p>
+Newer versions of the standard have removed support for this old-fashioned way
+of defining functions, but the way that the scope of parameters was defined was
+sort of rooted in this old model. When you parse the parameter list, those
+params go into an implicit parameter scope, like with those K&amp;R functions.  So
+this means that in our <tt>what()</tt> function up above, <tt>n</tt> has
+already been declared by the time we get to <tt>x</tt> and we have a scope to
+put our side-effecting <tt>printf()</tt> call into: the parameter scope. so
+that's where it goes.
+</p>
+<p>
+Oh and by the way, despite being declared as a VLA and having a side effect
+when you call this function, the type of <tt>x</tt> is still adjusted to a
+pointer, just like a normal array parameter. So we have a side effect
+expression that is used to determine a bounds, but which is not used and just
+leaves the <tt>printf()</tt> behind.
+</p>
+<p>
+Oh and even more fun, <tt>printf()</tt> can return <tt>-1</tt> and a negative
+VLA bounds is undefined behavior, so IO errors can cause undefined behavior in
+your parameter list!
+</p>
+<div>
+<h2 id="the-realization">The Realization</h2>
+<p>
+At this point I realized I was dealing with an entirely different beast than
+just sugar for <tt>alloca()</tt> and I couldn't trivially rewrite their
+declarations in such a way. I had also recently implemented the
+<tt>_Defer</tt> proposal for C2Y in my interpreter, which gave me the missing
+piece of the puzzle: I could use the same cleanup mechanics I had for
+<tt>_Defer</tt> for deallocating the VLA's buffer.
+</p>
+<p>
+I won't go into all of the rules for VLAs (read the draft standard), but
+in my compiler's design I could desugar a VLA usage like:
+</p>
+<pre>
+<span class="type">int</span> frobnicate(...){
+  <span class="comment">// ...</span>
+  <span class="keyword">if</span>(cond){
+    <span class="keyword">typedef</span> <span class="type">int</span> A[<span class="func">printf</span>(<span class="literal">"%d\n"</span>, <span class="literal">4</span>)];
+    <span class="type">int</span> x = <span class="func">printf</span>(<span class="literal">"sizeof(A) = %zu\n"</span>, <span class="keyword">sizeof</span>(A));
+    A buff;
+    frizzle(buff, <span class="keyword">_Countof</span> buff);
+  }
+  <span class="comment">// ...</span>
+}
+</pre>
+<p>
+Into something like:
+</p>
+<pre>
+<span class="type">int</span> frobnicate(...){
+  <span class="comment">// ...</span>
+  <span class="keyword">if</span>(cond){
+     <span class="type">size_t</span> _A_countof = <span class="func">printf</span>(<span class="literal">"%d\n"</span>, <span class="literal">4</span>);
+     <span class="type">int</span> x = <span class="func">printf</span>(<span class="literal">"sizeof(A) = %zu\n"</span>,
+                    <span class="keyword">sizeof</span>(<span class="type">int</span>)*_A_countof);
+     _Stack_mark _mark = __save_stack();
+     <span class="type">int</span> *_buff_backing = alloca(<span class="keyword">sizeof</span>(<span class="type">int</span>)*_A_countof);
+     _Defer __restore_stack(_mark);
+     frizzle(_buff_backing, _A_countof);
+  }
+  <span class="comment">// ...</span>
+}
+</pre>
+<p>
+And this would have the correct semantics:
+</p>
+<ol>
+<li>
+Bounds is evaluated once and cached in a hidden local variable.
+</li>
+<li>
+Bounds evaluates any side effects exactly once.
+</li>
+<li>
+If somehow we enter this code again, the bounds gets re-evalauted as normal.
+</li>
+<li>
+<tt>_Defer</tt> cleanup with stack save/restore gives us the correct block
+ lifetime semantics and ensures the storage gets recycled if we
+ <tt>goto</tt> or whatever other control flow.
+</li>
+</ol>
+</div>
+<div>
+<h2 id="conclusion">Conclusion</h2>
+<p>
+VLAs are weird, but with a bit of creativity we can figure out a reasonable
+runtime representation of them that doesn't break a normal C execution model.
+I still personally avoid them due to portability concerns (I doubt MSVC will
+ever support them, but who knows, maybe they'll read this post and realize
+it's not that hard to support), but if you want to use them in <a href="https://github.com/drpriver/DrC">DrC</a>, now you
+can!
+</p>
+</div>
+</article>
+<div>
+<h2 id="copyright">Copyright</h2>
+<p>
+All code in this article is released into the public domain.
+</p>
+</div>
+</body>
+</html>

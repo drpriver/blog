@@ -1,0 +1,180 @@
+::css #import
+  ../../c.css
+::import
+  ../../highlight-c.dnd
+[Home | home]
+Understanding VLAs in C::title
+<i>[David Priver], October 17th, 2026</i>
+
+::raw
+  <article>
+
+::links
+  C interpreter = https://github.com/drpriver/DrC
+Variable Length Arrays (or VLAs) are a somewhat maligned feature
+of C added in the C99 standard. For a while I didn't really understand them,
+but while working on my [C interpreter], I was reaching the point where
+I needed to add this feature. A VLA is an array type whose dimension
+is a runtime expression instead of a constant. It looks something like
+this:
+
+::pre.C
+  int work(int n){
+      int buffer[n]; // Not a constant dimension!
+      for(int i = 0; i < n; i++){
+          do_something(&buffer[i]);
+      }
+      return buffer[n-1];
+  }
+When I first saw this feature, I assumed it was just syntactic sugar
+over a call to <tt>alloca()</tt>. In other words, the above would desugar
+into something like:
+::pre.C
+  int work(int n){
+      int *buffer = alloca(n * sizeof *buffer);
+      // ...
+  }
+But that is not at all the case, for several reasons:
+
+1. The bounds of the VLA are set when execution reaches that point.
+   Modifying <tt>n</tt> doesn't change the bounds of <tt>buffer</tt>. So you can't just reuse
+   <tt>n</tt> when doing <tt>sizeof()</tt>.
+2. The result of <tt>alloca()</tt> has function lifetime, but a VLA
+   has block lifetime, like a regular array. This means VLAs in different loop
+   iterations have different lifetimes. And because the bounds is set when
+   execution actually reaches the VLA, you can't just re-use the allocation
+   directly. And if you actually did just call <tt>alloca()</tt> each time, you could
+   exhaust your stack in a loop.
+3. The bounds is allowed to have side-effects!
+::pre.C
+  int unexpected(int n){
+      // has side effects, but is only evaluated once!
+      int buffer[printf("%d\n", n)];
+
+      // _Countof buffer = cached result of `printf()`;
+      for(size_t i = 0; i < _Countof buffer; i++){
+          // ...
+      }
+      // ...
+  }
+
+Another of the oddities of VLAs: they can make <tt>sizeof()</tt> and <tt>typedef</tt> have
+side effects.
+
+::pre.C
+  void whoa(void){
+      // No statements in this function
+      // `typedef` is by definition a declaration.
+      typedef int w[printf("%s\n", __func__)];
+      // and yet...
+  }
+  int main(){
+      whoa(); // prints "whoa"
+  }
+
+And function definitions can have side effects in the parameters!
+
+::pre.C
+  void what(int n, int x[printf("%d\n", n)]){
+    // empty body...
+  }
+  int main(){
+      what(4, 0); // 4
+      what(2, 0); // 2
+  }
+The last one is kind of hard to understand. Where is the <tt>printf()</tt> evaluated?
+How is <tt>n</tt> visible?
+
+To understand this, you kind of need to understand pre-ANSI C. Once upon a time,
+functions were defined as thus:
+::pre.C
+  add(a, b) // return-type defaults to int
+    int a; // parameter scope
+    int b;
+    {
+      return a + b;
+    }
+Newer versions of the standard have removed support for this old-fashioned way
+of defining functions, but the way that the scope of parameters was defined was
+sort of rooted in this old model. When you parse the parameter list, those
+params go into an implicit parameter scope, like with those K&R functions.  So
+this means that in our <tt>what()</tt> function up above, <tt>n</tt> has
+already been declared by the time we get to <tt>x</tt> and we have a scope to
+put our side-effecting <tt>printf()</tt> call into: the parameter scope. so
+that's where it goes.
+
+Oh and by the way, despite being declared as a VLA and having a side effect
+when you call this function, the type of <tt>x</tt> is still adjusted to a
+pointer, just like a normal array parameter. So we have a side effect
+expression that is used to determine a bounds, but which is not used and just
+leaves the <tt>printf()</tt> behind.
+
+Oh and even more fun, <tt>printf()</tt> can return <tt>-1</tt> and a negative
+VLA bounds is undefined behavior, so IO errors can cause undefined behavior in
+your parameter list!
+
+The Realization::md
+  At this point I realized I was dealing with an entirely different beast than
+  just sugar for <tt>alloca()</tt> and I couldn't trivially rewrite their
+  declarations in such a way. I had also recently implemented the
+  <tt>_Defer</tt> proposal for C2Y in my interpreter, which gave me the missing
+  piece of the puzzle: I could use the same cleanup mechanics I had for
+  <tt>_Defer</tt> for deallocating the VLA's buffer.
+
+  I won't go into all of the rules for VLAs (read the draft standard), but
+  in my compiler's design I could desugar a VLA usage like:
+
+  ::pre.C
+    int frobnicate(...){
+      // ...
+      if(cond){
+        typedef int A[printf("%d\n", 4)];
+        int x = printf("sizeof(A) = %zu\n", sizeof(A));
+        A buff;
+        frizzle(buff, _Countof buff);
+      }
+      // ...
+    }
+  Into something like:
+  ::pre.C
+    int frobnicate(...){
+      // ...
+      if(cond){
+         size_t _A_countof = printf("%d\n", 4);
+         int x = printf("sizeof(A) = %zu\n",
+                        sizeof(int)*_A_countof);
+         _Stack_mark _mark = __save_stack();
+         int *_buff_backing = alloca(sizeof(int)*_A_countof);
+         _Defer __restore_stack(_mark);
+         frizzle(_buff_backing, _A_countof);
+      }
+      // ...
+    }
+  And this would have the correct semantics:
+  1. Bounds is evaluated once and cached in a hidden local variable.
+  2. Bounds evaluates any side effects exactly once.
+  3. If somehow we enter this code again, the bounds gets re-evalauted as normal.
+  4. <tt>_Defer</tt> cleanup with stack save/restore gives us the correct block
+     lifetime semantics and ensures the storage gets recycled if we
+     <tt>goto</tt> or whatever other control flow.
+
+Conclusion::md
+  VLAs are weird, but with a bit of creativity we can figure out a reasonable
+  runtime representation of them that doesn't break a normal C execution model.
+  I still personally avoid them due to portability concerns (I doubt MSVC will
+  ever support them, but who knows, maybe they'll read this post and realize
+  it's not that hard to support), but if you want to use them in [DrC], now you
+  can!
+
+  ::links
+    Drc = https://github.com/drpriver/DrC
+  
+
+::raw
+  </article>
+Copyright::md
+  All code in this article is released into the public domain.
+
+::links
+  home = https://www.davidpriver.com
+  David Priver = mailto:david@davidpriver.com
