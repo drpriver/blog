@@ -36,3 +36,5 @@ include Fun-Extending-the-C-Preprocessor/Fun-Extending-the-C-Preprocessor.mak
 
 # Understanding VLAs in C
 include Understanding-VLAs-in-C/Understanding-VLAs-in-C.mak
+
+include cpp-mutable-state/cpp-mutable-state.mak

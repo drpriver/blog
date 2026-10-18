@@ -5375,5 +5375,577 @@ All code in this article is released into the public domain.
 &lt;/div&gt;
 &lt;/body&gt;
 &lt;/html&gt;
-</description><pubDate>Sat, 17 Oct 2026 23:51:11 GMT</pubDate><link>https://www.davidpriver.com/Understanding-VLAs-in-C.html</link><author>david@davidpriver.com</author></item></channel>
+</description><pubDate>Sat, 17 Oct 2026 23:51:11 GMT</pubDate><link>https://www.davidpriver.com/Understanding-VLAs-in-C.html</link><author>david@davidpriver.com</author></item><item><title>More Fun Extending the C Preprocessor: Mutable State</title><description>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+&lt;meta charset="UTF-8"&gt;
+&lt;meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"&gt;
+&lt;title&gt;More Fun Extending the C Preprocessor: Mutable State&lt;/title&gt;
+&lt;style&gt;
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  max-width: 68ch;
+  margin: auto;
+  margin-bottom: 40em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 12px;
+  background-color: #fff;
+  color: #000;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #333;
+    color: #fff;
+  }
+  a:visited {
+    color: #88f;
+  }
+  a {
+    color: #88f;
+  }
+}
+dt {
+  font-weight: bold;
+}
+pre {
+  padding-left: 2em;
+  padding-right: 1em;
+  padding-top: 1ex;
+  padding-bottom: 1ex;
+  background-color: #fdf6e3;
+  border-radius: 16px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  overflow-x: auto;
+  line-height: 125%;
+}
+tt {
+  background-color: #eee;
+  padding: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  pre {
+    background-color: #222;
+  }
+  tt {
+    background-color: #222;
+  }
+}
+pre .enum {
+  font-weight: bold;
+}
+pre .keyword {
+  color: #049407;
+}
+@media (prefers-color-scheme: dark) {
+  pre .keyword {
+    color: #24c427;
+  }
+}
+pre .comment {
+  color: #000;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  pre .comment {
+    color: #fff;
+  }
+}
+pre .literal {
+  color: #2aa198;
+}
+pre .type {
+  color: #de6e00;
+}
+pre .macro {
+  color: #66a;
+}
+pre .func, pre .function {
+  color: #213dde;
+}
+@media (prefers-color-scheme: dark) {
+  pre .func, pre .function {
+    color: #519dde;
+  }
+}
+pre .string {
+  color: #2aa198;
+}
+pre .preproc {
+  color: #777;
+}
+.quoted {
+  margin-left: 2em;
+  border-left: 2px solid grey;
+  padding-left: 8px;
+}
+pre .h {
+  font-weight: bold;
+}
+pre .param {
+  color: #6a6;
+}
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;p&gt;
+&lt;a href="https://www.davidpriver.com"&gt;Home&lt;/a&gt;
+&lt;/p&gt;
+&lt;h1 id="more-fun-extending-the-c-preprocessor-mutable-state"&gt;More Fun Extending the C Preprocessor: Mutable State&lt;/h1&gt;
+&lt;p&gt;
+&lt;i&gt;&lt;a href="mailto:david@davidpriver.com"&gt;David Priver&lt;/a&gt;, October 18th, 2026&lt;/i&gt;
+&lt;/p&gt;
+&lt;article&gt;
+&lt;p&gt;
+The C Preprocessor is a powerful but limited tool and is the first stage of
+many in the transformation of C source code into execution or an executable.
+Its mutable state has traditionally been limited to specific
+&lt;tt&gt;#directives&lt;/tt&gt;. &lt;tt&gt;__COUNTER__&lt;/tt&gt; (now standardized in C2y) cracks
+that door open by mutating state during expansion. What if we pushed that door
+open the rest of the way? As I alluded to in my &lt;a href="/Fun-Extending-the-C-Preprocessor.html"&gt;previous post&lt;/a&gt;, you can
+achieve some powerful results with only a few simple primitives.
+&lt;/p&gt;
+&lt;div&gt;
+&lt;h2 id="ttcounter-tt"&gt;&lt;tt&gt;__COUNTER__&lt;/tt&gt;&lt;/h2&gt;
+&lt;p&gt;
+&lt;tt&gt;__COUNTER__&lt;/tt&gt; is a widely implemented C Preprocessor extension, which has
+finally been standardized in the upcoming C2y standard. It expands to 0 on
+its first use, and 1 more than its previous expansion on subsequent uses.
+&lt;/p&gt;
+&lt;p&gt;
+The usual usage of this is to generate unique suffixes within a translation
+unit, which works better than &lt;tt&gt;__LINE__&lt;/tt&gt; for this purpose.
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; CAT(A, B) CAT_(A, B)
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; CAT_(A, B) A##B
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; UNIQUE(prefix) CAT(prefix, __COUNTER__)
+&lt;span class="comment"&gt;// __LINE__ wouldn't give us a unique identifier.&lt;/span&gt;
+&lt;span class="type"&gt;int&lt;/span&gt;   UNIQUE(foo); &lt;span class="type"&gt;char&lt;/span&gt;  UNIQUE(foo);
+&lt;span class="type"&gt;float&lt;/span&gt; UNIQUE(foo); &lt;span class="type"&gt;short&lt;/span&gt; UNIQUE(foo);
+&lt;/pre&gt;
+&lt;p&gt;
+Expands to:
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="type"&gt;int&lt;/span&gt;  foo0;  &lt;span class="type"&gt;char&lt;/span&gt;  foo1;
+&lt;span class="type"&gt;float&lt;/span&gt; foo2; &lt;span class="type"&gt;short&lt;/span&gt; foo3;
+&lt;/pre&gt;
+&lt;p&gt;
+Now &lt;tt&gt;__COUNTER__&lt;/tt&gt; is a very interesting builtin macro not for the
+above usage, but because it introduces something to the C-preprocessor you
+didn't have before: mutable state in macro expansions. You had mutable state
+before (what are &lt;tt&gt;#define&lt;/tt&gt;, &lt;tt&gt;#undef&lt;/tt&gt;, etc. if not imperatively
+mutating the state of the macro table?), but not in the middle of a macro
+expansion. What if we pulled at this thread a little bit more? What could we
+achieve if we had the power to implement &lt;tt&gt;__COUNTER__&lt;/tt&gt; ourselves?
+&lt;/p&gt;
+&lt;p&gt;
+But first a motivating example.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="a-motivating-example-x-macros"&gt;A Motivating Example: X Macros&lt;/h2&gt;
+&lt;p&gt;
+A powerful pattern in C is the X-macro pattern. Frequently you'll have
+some collection of symbols, values or other things that need to be kept in
+sync with each other, but you can't syntactically put them in an array of C
+structs. So as with any other programming problem you add a layer of
+indirection: create a table in the preprocessor instead and macro expand it
+in different ways based on the need.
+&lt;/p&gt;
+&lt;p&gt;
+There is more than one way to implement the X-macro pattern, but
+a common way is the following:
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; COMMANDS \
+  X(exit, &lt;span class="literal"&gt;"exit the program"&lt;/span&gt;) \
+  X(help, &lt;span class="literal"&gt;"print the help"&lt;/span&gt;) \
+  X(reverse, &lt;span class="literal"&gt;"reverse the string"&lt;/span&gt;) \
+  X(exec, &lt;span class="literal"&gt;"exec the cmdline"&lt;/span&gt;)
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; X(name, help) \
+  &lt;span class="type"&gt;const&lt;/span&gt; &lt;span class="type"&gt;char&lt;/span&gt; *name##_help = help;
+COMMANDS
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;undef&lt;/span&gt; X
+&lt;/pre&gt;
+&lt;p&gt;
+Used for example like this:
+&lt;/p&gt;
+&lt;details id="cmdlinec"&gt;
+&lt;summary style="cursor:pointer"&gt;
+cmdline.c&lt;/summary&gt;
+&lt;div&gt;
+&lt;pre&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;include&lt;/span&gt; &lt;span class="literal"&gt;&amp;lt;stdio.h&amp;gt;&lt;/span&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;include&lt;/span&gt; &lt;span class="literal"&gt;&amp;lt;string.h&amp;gt;&lt;/span&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;include&lt;/span&gt; &lt;span class="literal"&gt;&amp;lt;stdlib.h&amp;gt;&lt;/span&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;ifndef&lt;/span&gt; _WIN32
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;include&lt;/span&gt; &lt;span class="literal"&gt;&amp;lt;unistd.h&amp;gt;&lt;/span&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;endif&lt;/span&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; STR(x) STR_(x)
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; STR_(x) &lt;span class="preproc"&gt;#&lt;/span&gt;x
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; CAT(A, B) CAT_(A, B)
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; CAT_(A, B) A##B
+&lt;span class="comment"&gt;// The X-macro.&lt;/span&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; COMMANDS \
+  X(exit, &lt;span class="literal"&gt;"exit the program"&lt;/span&gt;) \
+  X(help, &lt;span class="literal"&gt;"print the help"&lt;/span&gt;) \
+  X(reverse, &lt;span class="literal"&gt;"reverse the string"&lt;/span&gt;) \
+  X(exec, &lt;span class="literal"&gt;"exec the cmdline"&lt;/span&gt;)
+
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; X(name, _) &lt;span class="type"&gt;int&lt;/span&gt; CAT(cmd_, name)(&lt;span class="type"&gt;char&lt;/span&gt;*);
+COMMANDS
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;undef&lt;/span&gt; X
+&lt;span class="keyword"&gt;enum&lt;/span&gt; Cmd {
+  &lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; X(name, _) CAT(CMD_, name),
+  COMMANDS
+  &lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;undef&lt;/span&gt; X
+  CMD_COUNT,
+};
+&lt;span class="type"&gt;const&lt;/span&gt; &lt;span class="keyword"&gt;struct&lt;/span&gt; {
+  &lt;span class="type"&gt;const&lt;/span&gt; &lt;span class="type"&gt;char&lt;/span&gt; *name; &lt;span class="type"&gt;const&lt;/span&gt; &lt;span class="type"&gt;char&lt;/span&gt; *help;
+} helps[] = {
+  &lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; X(name, help) {STR(name), help},
+  COMMANDS
+  &lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;undef&lt;/span&gt; X
+};
+
+&lt;span class="type"&gt;int&lt;/span&gt; dispatch(&lt;span class="type"&gt;char&lt;/span&gt; *cmdline){
+  &lt;span class="type"&gt;char&lt;/span&gt; *cmd;
+  &lt;span class="type"&gt;char&lt;/span&gt; *space = strchr(cmdline, &lt;span class="literal"&gt;' '&lt;/span&gt;);
+  &lt;span class="keyword"&gt;if&lt;/span&gt;(space){
+    *space = &lt;span class="literal"&gt;0&lt;/span&gt;;
+    cmd = cmdline;
+    cmdline = space+&lt;span class="literal"&gt;1&lt;/span&gt;;
+  }
+  &lt;span class="keyword"&gt;else&lt;/span&gt; {
+    cmd = cmdline;
+    cmdline = cmd+strlen(cmdline);
+  }
+  &lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; X(name, _) \
+    &lt;span class="keyword"&gt;if&lt;/span&gt;(strcmp(cmd, STR(name))==&lt;span class="literal"&gt;0&lt;/span&gt;) \
+      &lt;span class="keyword"&gt;return&lt;/span&gt; CAT(cmd_, name)(cmdline);
+  COMMANDS
+  &lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;undef&lt;/span&gt; X
+  &lt;span class="func"&gt;printf&lt;/span&gt;(&lt;span class="literal"&gt;"Unrecognized cmd '%s'\n"&lt;/span&gt;, cmd);
+  cmd_help(&lt;span class="literal"&gt;""&lt;/span&gt;);
+  &lt;span class="keyword"&gt;return&lt;/span&gt; &lt;span class="literal"&gt;0&lt;/span&gt;;
+}
+
+&lt;span class="type"&gt;int&lt;/span&gt; main(){
+  &lt;span class="type"&gt;char&lt;/span&gt; buff[&lt;span class="literal"&gt;512&lt;/span&gt;];
+  &lt;span class="type"&gt;char&lt;/span&gt; *p;
+  &lt;span class="keyword"&gt;for&lt;/span&gt;(&lt;span class="func"&gt;printf&lt;/span&gt;(&lt;span class="literal"&gt;"&amp;gt; "&lt;/span&gt;), fflush(stdout);
+      (p = fgets(buff, &lt;span class="keyword"&gt;sizeof&lt;/span&gt; buff, stdin));
+      &lt;span class="func"&gt;printf&lt;/span&gt;(&lt;span class="literal"&gt;"&amp;gt; "&lt;/span&gt;), fflush(stdout)
+  ){
+    &lt;span class="type"&gt;char&lt;/span&gt; *nl = strrchr(p, &lt;span class="literal"&gt;'\n'&lt;/span&gt;);
+    &lt;span class="keyword"&gt;if&lt;/span&gt;(nl) *nl = &lt;span class="literal"&gt;0&lt;/span&gt;;
+    &lt;span class="keyword"&gt;if&lt;/span&gt;(!*p) &lt;span class="keyword"&gt;continue&lt;/span&gt;;
+    &lt;span class="type"&gt;int&lt;/span&gt; ret = dispatch(p);
+    &lt;span class="keyword"&gt;if&lt;/span&gt;(ret) &lt;span class="keyword"&gt;return&lt;/span&gt; ret;
+  }
+}
+&lt;span class="type"&gt;int&lt;/span&gt; cmd_exit(&lt;span class="type"&gt;char&lt;/span&gt; *cmdline){
+    &lt;span class="func"&gt;printf&lt;/span&gt;(&lt;span class="literal"&gt;"goodbye!\n"&lt;/span&gt;);
+    exit(&lt;span class="literal"&gt;0&lt;/span&gt;);
+}
+&lt;span class="type"&gt;int&lt;/span&gt; cmd_help(&lt;span class="type"&gt;char&lt;/span&gt; *cmdline){
+    &lt;span class="keyword"&gt;for&lt;/span&gt;(&lt;span class="type"&gt;int&lt;/span&gt; i = &lt;span class="literal"&gt;0&lt;/span&gt;; i &amp;lt; CMD_COUNT; i++)
+        &lt;span class="func"&gt;printf&lt;/span&gt;(&lt;span class="literal"&gt;"%s: %s\n"&lt;/span&gt;, helps[i].name, helps[i].help);
+    &lt;span class="keyword"&gt;return&lt;/span&gt; &lt;span class="literal"&gt;0&lt;/span&gt;;
+}
+&lt;span class="type"&gt;int&lt;/span&gt; cmd_reverse(&lt;span class="type"&gt;char&lt;/span&gt; *cmdline){
+    &lt;span class="func"&gt;printf&lt;/span&gt;(&lt;span class="literal"&gt;"reverse(%s) = "&lt;/span&gt;, cmdline);
+    &lt;span class="keyword"&gt;for&lt;/span&gt;(&lt;span class="type"&gt;size_t&lt;/span&gt; i = strlen(cmdline); i--; )
+        putchar(cmdline[i]);
+    putchar(&lt;span class="literal"&gt;'\n'&lt;/span&gt;);
+    &lt;span class="keyword"&gt;return&lt;/span&gt; &lt;span class="literal"&gt;0&lt;/span&gt;;
+}
+&lt;span class="type"&gt;int&lt;/span&gt; cmd_exec(&lt;span class="type"&gt;char&lt;/span&gt;* cmdline){
+  &lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;ifdef&lt;/span&gt; _WIN32
+    &lt;span class="func"&gt;printf&lt;/span&gt;(&lt;span class="literal"&gt;"Not supported on windows!\n"&lt;/span&gt;);
+    &lt;span class="keyword"&gt;return&lt;/span&gt; &lt;span class="literal"&gt;1&lt;/span&gt;;
+  &lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="keyword"&gt;else&lt;/span&gt;
+    &lt;span class="keyword"&gt;return&lt;/span&gt; execl(&lt;span class="literal"&gt;"/bin/sh"&lt;/span&gt;, &lt;span class="literal"&gt;"sh"&lt;/span&gt;, &lt;span class="literal"&gt;"-c"&lt;/span&gt;, cmdline, NULL);
+  &lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;endif&lt;/span&gt;
+}
+&lt;/pre&gt;
+&lt;/div&gt;
+&lt;/details&gt;
+&lt;p&gt;
+This is a powerful technique, as you can see even in this toy CLI.
+In practice though, you run into several annoying problems:
+&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+Giant macros with backslash-continuations are ugly. The more pieces
+ of parallel data you need to support, the worse it gets.
+&lt;/li&gt;
+&lt;li&gt;
+The entire X-macro has to be defined up-front. You have to pre-declare
+ everything in it instead of it being discovered from your program.
+&lt;/li&gt;
+&lt;li&gt;
+Conditionally including things in the X-macro list is a huge pain.
+ For example, the above program should probably exclude unsupported
+ commands like &lt;tt&gt;exec&lt;/tt&gt; based on platform, but you'd end up having
+ to have an X macro list that is the combination of two X macro
+ lists and it quickly gets out of hand.
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;
+If only we could write something like:
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; CMD(name, help) ... magic ...
+CMD(help, &lt;span class="literal"&gt;"list the help"&lt;/span&gt;)
+CMD(exit, &lt;span class="literal"&gt;"exit the program"&lt;/span&gt;)
+...
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;ifndef&lt;/span&gt; _WIN32
+CMD(exec, &lt;span class="literal"&gt;"exec the command line"&lt;/span&gt;)
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;endif&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;
+And get the benefits of that X-macro without its baggage?
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="ttget-tt-ttset-tt"&gt;&lt;tt&gt;__get()&lt;/tt&gt; /  &lt;tt&gt;__set()&lt;/tt&gt;&lt;/h2&gt;
+&lt;p&gt;
+So back to what we observed with &lt;tt&gt;__COUNTER__&lt;/tt&gt;. Here we had a macro
+that mutates preprocessor state based on its expansion. What primitives would
+we need to implement something like this ourselves in the CPP?
+&lt;/p&gt;
+&lt;p&gt;
+If it was a normal programming language, it would be pretty trivial.
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="type"&gt;int&lt;/span&gt; MY_COUNTER = &lt;span class="literal"&gt;0&lt;/span&gt;;
+&lt;span class="type"&gt;int&lt;/span&gt; __MY_COUNTER__(&lt;span class="type"&gt;void&lt;/span&gt;){
+  &lt;span class="type"&gt;int&lt;/span&gt; result = MY_COUNTER;
+  MY_COUNTER = MY_COUNTER + &lt;span class="literal"&gt;1&lt;/span&gt;;
+  &lt;span class="keyword"&gt;return&lt;/span&gt; result;
+}
+&lt;/pre&gt;
+&lt;p&gt;
+But we're in the CPP. We need:
+&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+The ability to retrieve data
+&lt;/li&gt;
+&lt;li&gt;
+The ability to compute a value.
+&lt;/li&gt;
+&lt;li&gt;
+The ability to store that computation back.
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;
+Something like:
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="comment"&gt;// initialize MY_COUNTER&lt;/span&gt;
+__set(MY_COUNTER, &lt;span class="literal"&gt;0&lt;/span&gt;)
+&lt;span class="comment"&gt;// define the "function"&lt;/span&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; __MY_COUNTER__ \
+  &lt;span class="comment"&gt;/* output this token into the token stream */&lt;/span&gt; \
+  __get(MY_COUNTER) \
+  &lt;span class="comment"&gt;/* compute and store the updated value */&lt;/span&gt; \
+  __set(MY_COUNTER, __calc(__get(MY_COUNTER)+&lt;span class="literal"&gt;1&lt;/span&gt;))
+
+&lt;span class="type"&gt;int&lt;/span&gt; x = __MY_COUNTER__; &lt;span class="comment"&gt;// int x = 0;&lt;/span&gt;
+&lt;span class="type"&gt;int&lt;/span&gt; y = __MY_COUNTER__; &lt;span class="comment"&gt;// int y = 1;&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;
+&lt;a href="https://github.com/drpriver/DrC/blob/master/EXTENSIONS.md#__calcpp-expression"&gt;&lt;tt&gt;__calc()&lt;/tt&gt;&lt;/a&gt; is needed to convert the token sequence using
+preprocessor-arithmetic into a single pp-number, which you need to support
+the unique-id use case of &lt;tt&gt;__COUNTER__&lt;/tt&gt;.
+&lt;/p&gt;
+&lt;p&gt;
+This by itself is already pretty useful. Instead of a single global
+&lt;tt&gt;__COUNTER__&lt;/tt&gt; stream in your preprocessor, you can have independent
+streams, each one counting something independently. And now that you can
+implement it yourself, you can customize it. Maybe it shouldn't output any
+tokens at all, just increment a counter every time a macro is expanded which
+you retrieve in one final place. The point is you now have the power in your
+own hands instead of just a special case that the CPP provides.
+&lt;/p&gt;
+&lt;p&gt;
+With just the primitives of &lt;tt&gt;__get()&lt;/tt&gt; and &lt;tt&gt;__set()&lt;/tt&gt;, you can
+already replace the need to define the X-macro all at once:
+&lt;/p&gt;
+&lt;pre&gt;
+__set(COMMANDS, ) &lt;span class="comment"&gt;// initialize to empty token sequence&lt;/span&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; CMD(name, help) \
+  __set(COMMANDS, __get(COMMANDS) X(name, help) )
+CMD(help, &lt;span class="literal"&gt;"list the help"&lt;/span&gt;)
+CMD(exit, &lt;span class="literal"&gt;"exit the program"&lt;/span&gt;)
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;ifndef&lt;/span&gt; _WIN32
+CMD(exec, &lt;span class="literal"&gt;"exec the command line"&lt;/span&gt;)
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;endif&lt;/span&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; X(name, help) \
+  &lt;span class="type"&gt;const&lt;/span&gt; &lt;span class="type"&gt;char&lt;/span&gt; *name##_help = help;
+__get(COMMANDS)
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;undef&lt;/span&gt; X
+&lt;/pre&gt;
+&lt;p&gt;
+Which on &lt;tt&gt;_WIN32&lt;/tt&gt; expands to:
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="comment"&gt;// whitespace added for legibility&lt;/span&gt;
+&lt;span class="type"&gt;const&lt;/span&gt; &lt;span class="type"&gt;char&lt;/span&gt; *help_help = &lt;span class="literal"&gt;"list the help"&lt;/span&gt;;
+&lt;span class="type"&gt;const&lt;/span&gt; &lt;span class="type"&gt;char&lt;/span&gt; *exit_help = &lt;span class="literal"&gt;"exit the program"&lt;/span&gt;;
+&lt;/pre&gt;
+&lt;p&gt;
+Which is exactly what we wanted! With two simple primitives we can register
+X-macros from the source of your program instead of defining them up front,
+implement &lt;tt&gt;__COUNTER__&lt;/tt&gt; ourselves, and really, the possibilities are
+endless.
+&lt;/p&gt;
+&lt;details id="functional-version"&gt;
+&lt;summary style="cursor:pointer"&gt;
+Functional Version&lt;/summary&gt;
+&lt;div&gt;
+&lt;p&gt;
+The above uses the common version of the X-macro, but if you like a more
+functional style you can do it like this:
+&lt;/p&gt;
+&lt;pre&gt;
+__set(COMMANDS, )
+&lt;span class="comment"&gt;// use preprocessor "tuples" (tokens wrapped in parens)&lt;/span&gt;
+&lt;span class="comment"&gt;// __append() simplifies the common need to add more tokens&lt;/span&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; CMD(name, help) __append(COMMANDS, (name, help), )
+CMD(help, &lt;span class="literal"&gt;"list the help"&lt;/span&gt;)
+CMD(exit, &lt;span class="literal"&gt;"exit the program"&lt;/span&gt;)
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;ifndef&lt;/span&gt; _WIN32
+CMD(exec, &lt;span class="literal"&gt;"exec the command line"&lt;/span&gt;)
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;endif&lt;/span&gt;
+&lt;span class="comment"&gt;// unpack the preprocessor tuple&lt;/span&gt;
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; DECL(args) DECL_ args
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;define&lt;/span&gt; DECL_(name, help) \
+  &lt;span class="type"&gt;const&lt;/span&gt; &lt;span class="type"&gt;char&lt;/span&gt; *name##_help = help;
+  &lt;span class="comment"&gt;// DrC __map() extension, skips the trailing comma&lt;/span&gt;
+  __map(DECL, __get(COMMANDS))
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;undef&lt;/span&gt; DECL
+&lt;span class="preproc"&gt;#&lt;/span&gt;&lt;span class="preproc"&gt;undef&lt;/span&gt; DECL_
+&lt;/pre&gt;
+&lt;p&gt;
+This way you don't have to name the macro ahead of time.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;/details&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="implementing-it"&gt;Implementing It&lt;/h2&gt;
+&lt;p&gt;
+In &lt;a href="https://github.com/drpriver/DrC"&gt;my C Preprocessor&lt;/a&gt;, I have added these &lt;a href="https://github.com/drpriver/DrC/blob/master/EXTENSIONS.md#__setname---__getname--__appendname-"&gt;extensions&lt;/a&gt; as well as
+&lt;tt&gt;__append()&lt;/tt&gt;.
+&lt;/p&gt;
+&lt;p&gt;
+The grammar is something like:
+&lt;/p&gt;
+&lt;div&gt;
+&lt;pre&gt;
+__get( identifier )
+__set( identifier, pp-tokens[opt] )
+__append( identifier, pp-tokens[opt] )
+
+&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;
+The arguments do get macro-expanded, like normal arguments to function-like
+macros.
+&lt;/p&gt;
+&lt;p&gt;
+&lt;tt&gt;__append()&lt;/tt&gt; simplifies the common use case of
+adding more pp-tokens to a preprocessor variable:
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="comment"&gt;// Instead of:&lt;/span&gt;
+__set(key, __get(key) more tokens)
+&lt;span class="comment"&gt;//&lt;/span&gt;&lt;span class="param"&gt; do:&lt;/span&gt;
+__append(key, more tokens)
+&lt;/pre&gt;
+&lt;p&gt;
+&lt;tt&gt;__set()&lt;/tt&gt; and &lt;tt&gt;__append()&lt;/tt&gt; do not expand to any pp-tokens.
+&lt;/p&gt;
+&lt;p&gt;
+The implementation itself was fairly trivial: the preprocessor has an
+identifier-keyed dictionary with token lists as the values. &lt;tt&gt;__set()&lt;/tt&gt;
+overwrites the token list, &lt;tt&gt;__get()&lt;/tt&gt; retrieves the token list and
+&lt;tt&gt;__append()&lt;/tt&gt; extends the token list without having to materialize the
+token list first. This feature could be extended to allow a pp-string as a key,
+which would avoid problems with macro expanding the key.
+&lt;/p&gt;
+&lt;p&gt;
+You can use it as part of using the &lt;tt&gt;drc&lt;/tt&gt; interpreter, or you can use
+the preprocessor stand-alone as &lt;tt&gt;drcpp&lt;/tt&gt;.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;h2 id="conclusion"&gt;Conclusion&lt;/h2&gt;
+&lt;p&gt;
+With the addition of two simple primitives of &lt;tt&gt;__get()&lt;/tt&gt; and &lt;tt&gt;__set()&lt;/tt&gt;,
+we can greatly increase the power and utility of the C Preprocessor and
+enable techniques that were simply too cumbersome to do before. The
+possibilities are numerous:
+&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+Independent counter streams
+&lt;/li&gt;
+&lt;li&gt;
+Distributed function/symbol registration
+&lt;/li&gt;
+&lt;li&gt;
+Distributed struct field registration:
+ &lt;ul&gt;
+&lt;li&gt;
+Different headers can declare they need some shared &lt;tt&gt;ctx&lt;/tt&gt; struct
+ to include a certain field. The header actually defining the struct
+ can then retrieve those fields directly into the struct's body.
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+Deferred code:
+ &lt;ul&gt;
+&lt;li&gt;
+Accumulate code that must be called at program startup into
+ a preprocessor variable and insert it as the first line of
+ &lt;tt&gt;main()&lt;/tt&gt;.
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+and many more.
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;
+However, can we get even more powerful? That's best
+left for the future.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;/article&gt;
+&lt;div&gt;
+&lt;h2 id="copyright"&gt;Copyright&lt;/h2&gt;
+&lt;p&gt;
+All code in this article is released into the public domain.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</description><pubDate>Sun, 18 Oct 2026 20:33:17 GMT</pubDate><link>https://www.davidpriver.com/cpp-mutable-state.html</link><guid isPermaLink="true">https://www.davidpriver.com/cpp-mutable-state.html</guid><author>david@davidpriver.com</author></item></channel>
 </rss>
