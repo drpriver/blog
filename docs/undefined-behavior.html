@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>My Take on Undefined Behavior in C</title>
+<style>
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  max-width: 68ch;
+  margin: auto;
+  margin-bottom: 40em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 12px;
+  background-color: #fff;
+  color: #000;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #333;
+    color: #fff;
+  }
+  a:visited {
+    color: #88f;
+  }
+  a {
+    color: #88f;
+  }
+}
+dt {
+  font-weight: bold;
+}
+pre {
+  padding-left: 2em;
+  padding-right: 1em;
+  padding-top: 1ex;
+  padding-bottom: 1ex;
+  background-color: #fdf6e3;
+  border-radius: 16px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  overflow-x: auto;
+  line-height: 125%;
+}
+tt {
+  background-color: #eee;
+  padding: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  pre {
+    background-color: #222;
+  }
+  tt {
+    background-color: #222;
+  }
+}
+pre .enum {
+  font-weight: bold;
+}
+pre .keyword {
+  color: #049407;
+}
+@media (prefers-color-scheme: dark) {
+  pre .keyword {
+    color: #24c427;
+  }
+}
+pre .comment {
+  color: #000;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  pre .comment {
+    color: #fff;
+  }
+}
+pre .literal {
+  color: #2aa198;
+}
+pre .type {
+  color: #de6e00;
+}
+pre .macro {
+  color: #66a;
+}
+pre .func, pre .function {
+  color: #213dde;
+}
+@media (prefers-color-scheme: dark) {
+  pre .func, pre .function {
+    color: #519dde;
+  }
+}
+pre .string {
+  color: #2aa198;
+}
+pre .preproc {
+  color: #777;
+}
+.quoted {
+  margin-left: 2em;
+  border-left: 2px solid grey;
+  padding-left: 8px;
+}
+pre .h {
+  font-weight: bold;
+}
+pre .param {
+  color: #6a6;
+}
+</style>
+</head>
+<body>
+<p>
+<a href="https://www.davidpriver.com">Home</a>
+</p>
+<h1 id="my-take-on-undefined-behavior-in-c">My Take on Undefined Behavior in C</h1>
+<p>
+<i><a href="mailto:david@davidpriver.com">David Priver</a>, October 20th, 2026</i>
+</p>
+<article>
+
+<p>
+A lot of digital ink has been spilled on the topic
+of undefined behavior in C, what it means for the
+programmer and unexpected trivia of what constitutes
+undefined behavior in the C standard. It is good for a
+C programmer to know what can cause undefined behavior,
+but it seems to me there is a fundamental confusion
+of what it means for behavior to be undefined by the C
+standard.
+</p>
+<p>
+To explain what I mean, we have to take a step back, and
+understand what the C standard even is. The C standard
+is a document specifying the requirements for a particular
+implementation to be able to call itself an implementation
+of the C programming language. That is it. That is all the
+power it has. If the implementation doesn't follow the
+standard (to a fuzzy degree of completeness), it cannot
+be called an implementation of the C programming language.
+</p>
+<p>
+So given that, how does the standard define undefined
+behavior?
+</p>
+<div>
+<blockquote>
+undefined behavior
+behavior, upon use of a nonportable or erroneous program
+construct or of erroneous data, for which this document
+imposes no requirements
+</blockquote>
+</div>
+<p>
+Connecting that to what I just explained, undefined behavior
+causes no particular constraint upon whether the
+implementation is allowed to call itself an implementation
+of the C programming language.  Being allowed to call itself
+an implementation of the C programming language does not
+free the implementation of other, possibly implied
+requirements or from business requirements.
+One example of undefined behavior is that a non-empty
+preprocessing unit has to end with a newline. If an
+implementation upon finding that chooses to produce bad code,
+it is still allowed to call itself an implementation of the
+C programming language, but it's not a very useful one!
+</p>
+<p>
+Somehow though, that definition of undefined behavior
+has become the basis of a logical leap. The C standard
+specifies requirements that an implementation must satisfy
+to be conforming. It is not a logical framework for
+understanding a C program. Undefined behavior is a situation
+where the standard "imposes no requirements". Therefore the
+document requires nothing about the semantics of the program
+upon encountering undefined behavior. But that does not mean
+the program has lost its semantics in some broader sense! An
+implementation can choose to preserve meaningful,
+predictable behavior in these situations, and in fact, that
+is exactly what is suggested in the standard:
+</p>
+<div>
+<blockquote>
+Note 1 to entry: Possible undefined behavior ranges from
+ignoring the situation completely with unpredictable
+results, to behaving during translation or program
+execution in a documented manner characteristic of the
+environment (with or without the issuance of a diagnostic
+message), to terminating a translation or execution (with
+the issuance of a diagnostic message).
+</blockquote>
+</div>
+<p>
+When a compiler chooses to exploit undefined behavior to
+eliminate code or infer that certain execution paths are
+impossible, that is a choice about how to implement C,
+not an action mandated by the standard. Interpreting
+undefined behavior as "this situation cannot happen" is a
+choice, not required.
+</p>
+<p>
+Some forms of undefined behavior are very common for
+programmers to accidentally or unknowingly produce. Most C
+programmers have not read the standard or have an
+encyclopedic knowledge of it and so don't know that things
+like signed integer overflow has behavior that is undefined.
+A compiler developer is certainly allowed to exploit this to
+say "as this behavior is undefined, I am allowed to optimize
+as it cannot happen" and still call itself an implementation
+of the C programming language. But if this choice introduces
+security issues or just simply erroneous results, then it
+is a less useful implementation of the C programming
+language for its users than it could be. Something being
+undefined behavior is not a blank check to do whatever you
+want as a compiler developer. You still need to produce
+a useful piece of software for your users. That is not to
+say that the usage of undefined behavior to optimize is
+always bad or wrong: it just needs to be weighed and decided
+whether it is worth it for the majority of users or should
+be exposed as a configuration knob, as GCC does with
+<tt>-fwrapv</tt>.
+</p>
+<p>
+So how did this happen? Why has undefined behavior become so
+strangely understood? I suspect part of the explanation is
+economic. Historically, compiler vendors competed directly
+for paying compiler users. Today, most compiler development
+is funded by organizations with substantial interests in
+hardware and platform performance. That creates incentives
+to prioritize optimization opportunities, including those
+enabled by undefined behavior and has weakened the pressure
+to preserve useful behavior in programs that don't
+strictly conform to the standard.
+</p>
+<p>
+As a user of the C programming language, undefined behavior
+in your source program makes it non-portable: it might work
+on your compiler today, but other compilers might not
+choose to preserve useful semantics. Other compilers might
+even be a different version of your compiler, or even the
+same compiler if you change the source of the program and
+trigger some different analysis. As a result you should
+avoid it as best you can. But how the compiler chooses to
+act in the face of undefined behavior is not because the C
+standard says to do that: your compiler chose to do that.
+</p>
+</article>
+</body>
+</html>

@@ -1,0 +1,123 @@
+::css #import
+  ../c.css
+[Home | home]
+My Take on Undefined Behavior in C::title
+<i>[David Priver], October 20th, 2026</i>
+::raw
+  <article>
+
+A lot of digital ink has been spilled on the topic
+of undefined behavior in C, what it means for the
+programmer and unexpected trivia of what constitutes
+undefined behavior in the C standard. It is good for a
+C programmer to know what can cause undefined behavior,
+but it seems to me there is a fundamental confusion
+of what it means for behavior to be undefined by the C
+standard.
+
+To explain what I mean, we have to take a step back, and
+understand what the C standard even is. The C standard
+is a document specifying the requirements for a particular
+implementation to be able to call itself an implementation
+of the C programming language. That is it. That is all the
+power it has. If the implementation doesn't follow the 
+standard (to a fuzzy degree of completeness), it cannot
+be called an implementation of the C programming language.
+
+So given that, how does the standard define undefined
+behavior?
+::quote
+  undefined behavior
+
+  behavior, upon use of a nonportable or erroneous program
+  construct or of erroneous data, for which this document
+  imposes no requirements
+
+Connecting that to what I just explained, undefined behavior
+causes no particular constraint upon whether the
+implementation is allowed to call itself an implementation
+of the C programming language.  Being allowed to call itself
+an implementation of the C programming language does not
+free the implementation of other, possibly implied
+requirements or from business requirements. 
+One example of undefined behavior is that a non-empty
+preprocessing unit has to end with a newline. If an
+implementation upon finding that chooses to produce bad code,
+it is still allowed to call itself an implementation of the
+C programming language, but it's not a very useful one!
+
+Somehow though, that definition of undefined behavior
+has become the basis of a logical leap. The C standard
+specifies requirements that an implementation must satisfy
+to be conforming. It is not a logical framework for
+understanding a C program. Undefined behavior is a situation
+where the standard "imposes no requirements". Therefore the
+document requires nothing about the semantics of the program
+upon encountering undefined behavior. But that does not mean
+the program has lost its semantics in some broader sense! An
+implementation can choose to preserve meaningful,
+predictable behavior in these situations, and in fact, that
+is exactly what is suggested in the standard:
+::quote
+  Note 1 to entry: Possible undefined behavior ranges from
+  ignoring the situation completely with unpredictable
+  results, to behaving during translation or program
+  execution in a documented manner characteristic of the
+  environment (with or without the issuance of a diagnostic
+  message), to terminating a translation or execution (with
+  the issuance of a diagnostic message).
+
+When a compiler chooses to exploit undefined behavior to
+eliminate code or infer that certain execution paths are
+impossible, that is a choice about how to implement C,
+not an action mandated by the standard. Interpreting
+undefined behavior as "this situation cannot happen" is a
+choice, not required.
+
+Some forms of undefined behavior are very common for
+programmers to accidentally or unknowingly produce. Most C
+programmers have not read the standard or have an
+encyclopedic knowledge of it and so don't know that things
+like signed integer overflow has behavior that is undefined.
+A compiler developer is certainly allowed to exploit this to
+say "as this behavior is undefined, I am allowed to optimize
+as it cannot happen" and still call itself an implementation
+of the C programming language. But if this choice introduces
+security issues or just simply erroneous results, then it
+is a less useful implementation of the C programming
+language for its users than it could be. Something being
+undefined behavior is not a blank check to do whatever you
+want as a compiler developer. You still need to produce
+a useful piece of software for your users. That is not to
+say that the usage of undefined behavior to optimize is
+always bad or wrong: it just needs to be weighed and decided
+whether it is worth it for the majority of users or should
+be exposed as a configuration knob, as GCC does with
+<tt>-fwrapv</tt>.
+
+So how did this happen? Why has undefined behavior become so
+strangely understood? I suspect part of the explanation is
+economic. Historically, compiler vendors competed directly
+for paying compiler users. Today, most compiler development 
+is funded by organizations with substantial interests in 
+hardware and platform performance. That creates incentives 
+to prioritize optimization opportunities, including those 
+enabled by undefined behavior and has weakened the pressure
+to preserve useful behavior in programs that don't
+strictly conform to the standard.
+
+As a user of the C programming language, undefined behavior
+in your source program makes it non-portable: it might work
+on your compiler today, but other compilers might not
+choose to preserve useful semantics. Other compilers might
+even be a different version of your compiler, or even the
+same compiler if you change the source of the program and
+trigger some different analysis. As a result you should
+avoid it as best you can. But how the compiler chooses to
+act in the face of undefined behavior is not because the C
+standard says to do that: your compiler chose to do that.
+::raw
+  </article>
+::links
+  home = https://www.davidpriver.com
+  David Priver = mailto:david@davidpriver.com

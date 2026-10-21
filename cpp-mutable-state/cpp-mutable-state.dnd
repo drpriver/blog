@@ -1,0 +1,358 @@
+::css #import
+  ../../c.css
+::import
+  ../../highlight-c.dnd
+::js
+  let wrapped = ctx.select_nodes({attributes:['wrapped']});
+  for(let w of wrapped){
+    w.insert_child(0, '<pre>');
+    w.add_child('</pre>');
+  }
+  //endjs
+[Home | home]
+More Fun Extending the C Preprocessor: Mutable State::title
+<i>[David Priver], October 18th, 2026</i>
+
+::raw
+  <article>
+::links
+  previous post = /Fun-Extending-the-C-Preprocessor.html
+  my C Compiler/Interpreter = https://github.com/drpriver/DrC
+
+
+The C Preprocessor is a powerful but limited tool and is the first stage of
+many in the transformation of C source code into execution or an executable.
+Its mutable state has traditionally been limited to specific
+<tt>#directives</tt>. <tt>__COUNTER__</tt> (now standardized in C2y) cracks
+that door open by mutating state during expansion. What if we pushed that door
+open the rest of the way? As I alluded to in my [previous post], you can
+achieve some powerful results with only a few simple primitives.
+
+
+<tt>__COUNTER__</tt>::md
+  <tt>__COUNTER__</tt> is a widely implemented C Preprocessor extension, which has
+  finally been standardized in the upcoming C2y standard. It expands to 0 on
+  its first use, and 1 more than its previous expansion on subsequent uses.
+
+  The usual usage of this is to generate unique suffixes within a translation
+  unit, which works better than <tt>__LINE__</tt> for this purpose.
+  ::pre.C
+    #define CAT(A, B) CAT_(A, B)
+    #define CAT_(A, B) A##B
+    #define UNIQUE(prefix) CAT(prefix, __COUNTER__)
+    // __LINE__ wouldn't give us a unique identifier.
+    int   UNIQUE(foo); char  UNIQUE(foo);
+    float UNIQUE(foo); short UNIQUE(foo);
+  Expands to:
+  ::pre.C
+    int  foo0;  char  foo1;
+    float foo2; short foo3;
+  Now <tt>__COUNTER__</tt> is a very interesting builtin macro not for the
+  above usage, but because it introduces something to the C-preprocessor you
+  didn't have before: mutable state in macro expansions. You had mutable state
+  before (what are <tt>#define</tt>, <tt>#undef</tt>, etc. if not imperatively
+  mutating the state of the macro table?), but not in the middle of a macro
+  expansion. What if we pulled at this thread a little bit more? What could we
+  achieve if we had the power to implement <tt>__COUNTER__</tt> ourselves?
+
+  But first a motivating example.
+
+A Motivating Example: X Macros::md
+  A powerful pattern in C is the X-macro pattern. Frequently you'll have
+  some collection of symbols, values or other things that need to be kept in
+  sync with each other, but you can't syntactically put them in an array of C
+  structs. So as with any other programming problem you add a layer of
+  indirection: create a table in the preprocessor instead and macro expand it
+  in different ways based on the need.
+
+  There is more than one way to implement the X-macro pattern, but
+  a common way is the following:
+  ::pre.C
+    #define COMMANDS \
+      X(exit, "exit the program") \
+      X(help, "print the help") \
+      X(reverse, "reverse the string") \
+      X(exec, "exec the cmdline")
+    #define X(name, help) \
+      const char *name##_help = help;
+    COMMANDS
+    #undef X
+
+  Used for example like this:
+  cmdline.c::details
+    ::pre.C
+      #include <stdio.h>
+      #include <string.h>
+      #include <stdlib.h>
+      #ifndef _WIN32
+      #include <unistd.h>
+      #endif
+      #define STR(x) STR_(x)
+      #define STR_(x) #x
+      #define CAT(A, B) CAT_(A, B)
+      #define CAT_(A, B) A##B
+      // The X-macro.
+      #define COMMANDS \
+        X(exit, "exit the program") \
+        X(help, "print the help") \
+        X(reverse, "reverse the string") \
+        X(exec, "exec the cmdline")
+
+      #define X(name, _) int CAT(cmd_, name)(char*);
+      COMMANDS
+      #undef X
+      enum Cmd {
+        #define X(name, _) CAT(CMD_, name),
+        COMMANDS
+        #undef X
+        CMD_COUNT,
+      };
+      const struct {
+        const char *name; const char *help;
+      } helps[] = {
+        #define X(name, help) {STR(name), help},
+        COMMANDS
+        #undef X
+      };
+
+      int dispatch(char *cmdline){
+        char *cmd;
+        char *space = strchr(cmdline, ' ');
+        if(space){
+          *space = 0;
+          cmd = cmdline;
+          cmdline = space+1;
+        }
+        else {
+          cmd = cmdline;
+          cmdline = cmd+strlen(cmdline);
+        }
+        #define X(name, _) \
+          if(strcmp(cmd, STR(name))==0) \
+            return CAT(cmd_, name)(cmdline);
+        COMMANDS
+        #undef X
+        printf("Unrecognized cmd '%s'\n", cmd);
+        cmd_help("");
+        return 0;
+      }
+
+      int main(){
+        char buff[512];
+        char *p;
+        for(printf("> "), fflush(stdout);
+            (p = fgets(buff, sizeof buff, stdin));
+            printf("> "), fflush(stdout)
+        ){
+          char *nl = strrchr(p, '\n');
+          if(nl) *nl = 0;
+          if(!*p) continue;
+          int ret = dispatch(p);
+          if(ret) return ret;
+        }
+      }
+      int cmd_exit(char *cmdline){
+          printf("goodbye!\n");
+          exit(0);
+      }
+      int cmd_help(char *cmdline){
+          for(int i = 0; i < CMD_COUNT; i++)
+              printf("%s: %s\n", helps[i].name, helps[i].help);
+          return 0;
+      }
+      int cmd_reverse(char *cmdline){
+          printf("reverse(%s) = ", cmdline);
+          for(size_t i = strlen(cmdline); i--; )
+              putchar(cmdline[i]);
+          putchar('\n');
+          return 0;
+      }
+      int cmd_exec(char* cmdline){
+        #ifdef _WIN32
+          printf("Not supported on windows!\n");
+          return 1;
+        #else
+          return execl("/bin/sh", "sh", "-c", cmdline, NULL);
+        #endif
+      }
+  This is a powerful technique, as you can see even in this toy CLI.
+  In practice though, you run into several annoying problems:
+  1. Giant macros with backslash-continuations are ugly. The more pieces
+     of parallel data you need to support, the worse it gets.
+  2. The entire X-macro has to be defined up-front. You have to pre-declare
+     everything in it instead of it being discovered from your program.
+  3. Conditionally including things in the X-macro list is a huge pain.
+     For example, the above program should probably exclude unsupported
+     commands like <tt>exec</tt> based on platform, but you'd end up having
+     to have an X macro list that is the combination of two X macro
+     lists and it quickly gets out of hand.
+
+  If only we could write something like:
+  ::pre.C
+    #define CMD(name, help) ... magic ...
+    CMD(help, "list the help")
+    CMD(exit, "exit the program")
+    ...
+    #ifndef _WIN32
+    CMD(exec, "exec the command line")
+    #endif
+  And get the benefits of that X-macro without its baggage?
+
+<tt>__get()</tt> /  <tt>__set()</tt>::md
+  So back to what we observed with <tt>__COUNTER__</tt>. Here we had a macro
+  that mutates preprocessor state based on its expansion. What primitives would
+  we need to implement something like this ourselves in the CPP?
+
+  If it was a normal programming language, it would be pretty trivial.
+  ::pre.C
+    int MY_COUNTER = 0;
+    int __MY_COUNTER__(void){
+      int result = MY_COUNTER;
+      MY_COUNTER = MY_COUNTER + 1;
+      return result;
+    }
+  But we're in the CPP. We need:
+  - The ability to retrieve data
+  - The ability to compute a value.
+  - The ability to store that computation back.
+
+  Something like:
+  ::pre.C
+    // initialize MY_COUNTER
+    __set(MY_COUNTER, 0)
+    // define the "function"
+    #define __MY_COUNTER__ \
+      /* output this token into the token stream */ \
+      __get(MY_COUNTER) \
+      /* compute and store the updated value */ \
+      __set(MY_COUNTER, __calc(__get(MY_COUNTER)+1))
+
+    int x = __MY_COUNTER__; // int x = 0;
+    int y = __MY_COUNTER__; // int y = 1;
+  [<tt>__calc()</tt> | calc] is needed to convert the token sequence using
+  preprocessor-arithmetic into a single pp-number, which you need to support
+  the unique-id use case of <tt>__COUNTER__</tt>.
+  ::links
+    calc = https://github.com/drpriver/DrC/blob/master/EXTENSIONS.md#__calcpp-expression
+
+  This by itself is already pretty useful. Instead of a single global
+  <tt>__COUNTER__</tt> stream in your preprocessor, you can have independent
+  streams, each one counting something independently. And now that you can
+  implement it yourself, you can customize it. Maybe it shouldn't output any
+  tokens at all, just increment a counter every time a macro is expanded which
+  you retrieve in one final place. The point is you now have the power in your
+  own hands instead of just a special case that the CPP provides.
+
+  With just the primitives of <tt>__get()</tt> and <tt>__set()</tt>, you can
+  already replace the need to define the X-macro all at once:
+
+  ::pre.C
+    __set(COMMANDS, ) // initialize to empty token sequence
+    #define CMD(name, help) \
+      __set(COMMANDS, __get(COMMANDS) X(name, help) )
+    CMD(help, "list the help")
+    CMD(exit, "exit the program")
+    #ifndef _WIN32
+    CMD(exec, "exec the command line")
+    #endif
+    #define X(name, help) \
+      const char *name##_help = help;
+    __get(COMMANDS)
+    #undef X
+  Which on <tt>_WIN32</tt> expands to:
+  ::pre.C
+    // whitespace added for legibility
+    const char *help_help = "list the help";
+    const char *exit_help = "exit the program";
+
+  Which is exactly what we wanted! With two simple primitives we can register
+  X-macros from the source of your program instead of defining them up front,
+  implement <tt>__COUNTER__</tt> ourselves, and really, the possibilities are
+  endless.
+
+  Functional Version::details
+    The above uses the common version of the X-macro, but if you like a more
+    functional style you can do it like this:
+    ::pre.C
+      __set(COMMANDS, )
+      // use preprocessor "tuples" (tokens wrapped in parens)
+      // __append() simplifies the common need to add more tokens
+      #define CMD(name, help) __append(COMMANDS, (name, help), )
+      CMD(help, "list the help")
+      CMD(exit, "exit the program")
+      #ifndef _WIN32
+      CMD(exec, "exec the command line")
+      #endif
+      // unpack the preprocessor tuple
+      #define DECL(args) DECL_ args
+      #define DECL_(name, help) \
+        const char *name##_help = help;
+        // DrC __map() extension, skips the trailing comma
+        __map(DECL, __get(COMMANDS))
+      #undef DECL
+      #undef DECL_
+    This way you don't have to name the macro ahead of time.
+
+Implementing It::md
+  ::links
+    my C Preprocessor = https://github.com/drpriver/DrC
+    extensions = https://github.com/drpriver/DrC/blob/master/EXTENSIONS.md#__setname---__getname--__appendname-
+  In [my C Preprocessor], I have added these [extensions] as well as
+  <tt>__append()</tt>.
+
+  The grammar is something like:
+  ::pre
+    __get( identifier )
+    __set( identifier, pp-tokens[opt] )
+    __append( identifier, pp-tokens[opt] )
+
+  The arguments do get macro-expanded, like normal arguments to function-like
+  macros.
+
+  <tt>__append()</tt> simplifies the common use case of
+  adding more pp-tokens to a preprocessor variable:
+  ::pre.C
+    // Instead of:
+    __set(key, __get(key) more tokens)
+    // do:
+    __append(key, more tokens)
+
+  <tt>__set()</tt> and <tt>__append()</tt> do not expand to any pp-tokens.
+
+  The implementation itself was fairly trivial: the preprocessor has an
+  identifier-keyed dictionary with token lists as the values. <tt>__set()</tt>
+  overwrites the token list, <tt>__get()</tt> retrieves the token list and
+  <tt>__append()</tt> extends the token list without having to materialize the
+  token list first. This feature could be extended to allow a pp-string as a key,
+  which would avoid problems with macro expanding the key.
+
+  You can use it as part of using the <tt>drc</tt> interpreter, or you can use
+  the preprocessor stand-alone as <tt>drcpp</tt>.
+
+Conclusion::md
+  With the addition of two simple primitives of <tt>__get()</tt> and <tt>__set()</tt>,
+  we can greatly increase the power and utility of the C Preprocessor and
+  enable techniques that were simply too cumbersome to do before. The
+  possibilities are numerous:
+  - Independent counter streams
+  - Distributed function/symbol registration
+  - Distributed struct field registration:
+    - Different headers can declare they need some shared <tt>ctx</tt> struct
+      to include a certain field. The header actually defining the struct
+      can then retrieve those fields directly into the struct's body.
+  - Deferred code:
+    - Accumulate code that must be called at program startup into
+      a preprocessor variable and insert it as the first line of
+      <tt>main()</tt>.
+  - and many more.
+
+  However, can we get even more powerful? That's best
+  left for the future.
+::raw
+  </article>
+Copyright::md
+  All code in this article is released into the public domain.
+
+::links
+  home = https://www.davidpriver.com
+  David Priver = mailto:david@davidpriver.com

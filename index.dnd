@@ -8,6 +8,7 @@ Welcome to my blog!
 
 Feel free to check out one of the following articles:
 
+- [My Take on Undefined Behavior | undefined-behavior]
 - [More Fun Extending the C Preprocessor: Mutable State | mutable-state]
 - [Understanding VLAs in C | Understanding VLAs in C]
 - [Fun Extending the C Preprocessor | Fun-Extending-the-C-Preprocessor]
@@ -49,6 +50,7 @@ Games:
 WebApps:
 - [Krug's Basement | krugsbasement]
   - VTT (Virtual Tabletop) for playing tabletop rpgs.
+  - [Source code | krug source]
 
 ::links
   drc = https://github.com/drpriver/drc
@@ -60,6 +62,7 @@ WebApps:
   krugsbasement = https://krugsbasement.com
   dndc = https://github.com/drpriver/dndc
   imgpgr = https://github.com/drpriver/imgpgr
+  krug source = https://github.com/drpriver/krugsbasement
 
 [rss]
 
@@ -82,6 +85,7 @@ WebApps:
   Fun-Extending-the-C-Preprocessor = Fun-Extending-the-C-Preprocessor.html
   Understanding Vlas in C = Understanding-VLAs-in-C.html
   mutable-state = cpp-mutable-state.html
+  undefined-behavior = undefined-behavior.html
 ::css
   :root {
     color-scheme: light dark;
