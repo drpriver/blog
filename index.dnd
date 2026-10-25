@@ -8,6 +8,7 @@ Welcome to my blog!
 
 Feel free to check out one of the following articles:
 
+- [Iterating Backwards in C | iterating-backwards]
 - [My Take on Undefined Behavior | undefined-behavior]
 - [More Fun Extending the C Preprocessor: Mutable State | mutable-state]
 - [Understanding VLAs in C | Understanding VLAs in C]
@@ -86,6 +87,7 @@ WebApps:
   Understanding Vlas in C = Understanding-VLAs-in-C.html
   mutable-state = cpp-mutable-state.html
   undefined-behavior = undefined-behavior.html
+  iterating-backwards = Iterating-backwards-in-C.html
 ::css
   :root {
     color-scheme: light dark;

@@ -6206,5 +6206,251 @@ standard says to do that: your compiler chose to do that.
 &lt;/article&gt;
 &lt;/body&gt;
 &lt;/html&gt;
-</description><pubDate>Tue, 20 Oct 2026 21:32:12 GMT</pubDate><link>https://www.davidpriver.com/undefined-behavior.html</link><guid isPermaLink="true">https://www.davidpriver.com/undefined-behavior.html</guid><author>david@davidpriver.com</author></item></channel>
+</description><pubDate>Tue, 20 Oct 2026 21:32:12 GMT</pubDate><link>https://www.davidpriver.com/undefined-behavior.html</link><guid isPermaLink="true">https://www.davidpriver.com/undefined-behavior.html</guid><author>david@davidpriver.com</author></item><item><title>Iterating Backwards in C</title><description>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+&lt;meta charset="UTF-8"&gt;
+&lt;meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"&gt;
+&lt;title&gt;Iterating Backwards in C&lt;/title&gt;
+&lt;style&gt;
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  max-width: 68ch;
+  margin: auto;
+  margin-bottom: 40em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 12px;
+  background-color: #fff;
+  color: #000;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #333;
+    color: #fff;
+  }
+  a:visited {
+    color: #88f;
+  }
+  a {
+    color: #88f;
+  }
+}
+dt {
+  font-weight: bold;
+}
+pre {
+  padding-left: 2em;
+  padding-right: 1em;
+  padding-top: 1ex;
+  padding-bottom: 1ex;
+  background-color: #fdf6e3;
+  border-radius: 16px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  overflow-x: auto;
+  line-height: 125%;
+}
+tt {
+  background-color: #eee;
+  padding: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  pre {
+    background-color: #222;
+  }
+  tt {
+    background-color: #222;
+  }
+}
+pre .enum {
+  font-weight: bold;
+}
+pre .keyword {
+  color: #049407;
+}
+@media (prefers-color-scheme: dark) {
+  pre .keyword {
+    color: #24c427;
+  }
+}
+pre .comment {
+  color: #000;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  pre .comment {
+    color: #fff;
+  }
+}
+pre .literal {
+  color: #2aa198;
+}
+pre .type {
+  color: #de6e00;
+}
+pre .macro {
+  color: #66a;
+}
+pre .func, pre .function {
+  color: #213dde;
+}
+@media (prefers-color-scheme: dark) {
+  pre .func, pre .function {
+    color: #519dde;
+  }
+}
+pre .string {
+  color: #2aa198;
+}
+pre .preproc {
+  color: #777;
+}
+.quoted {
+  margin-left: 2em;
+  border-left: 2px solid grey;
+  padding-left: 8px;
+}
+pre .h {
+  font-weight: bold;
+}
+pre .param {
+  color: #6a6;
+}
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;p&gt;
+&lt;a href="https://www.davidpriver.com"&gt;Home&lt;/a&gt;
+&lt;/p&gt;
+&lt;h1 id="iterating-backwards-in-c"&gt;Iterating Backwards in C&lt;/h1&gt;
+&lt;p&gt;
+&lt;i&gt;&lt;a href="mailto:david@davidpriver.com"&gt;David Priver&lt;/a&gt;, October 24th, 2026&lt;/i&gt;
+&lt;/p&gt;
+&lt;article&gt;
+
+&lt;p&gt;
+This is shorter than some of my other posts, but I keep seeing people
+doing this wrong. It's even worse now in the LLM era.
+&lt;/p&gt;
+&lt;p&gt;
+Let's say you have a buffer and a counter and you need to iterate it
+backwards for some reason:
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="type"&gt;_Bool&lt;/span&gt; find_last(&lt;span class="type"&gt;size_t&lt;/span&gt; count, &lt;span class="type"&gt;int&lt;/span&gt; *haystack,
+                &lt;span class="type"&gt;int&lt;/span&gt; needle, &lt;span class="type"&gt;size_t&lt;/span&gt; *where);
+&lt;/pre&gt;
+&lt;p&gt;
+Almost everyone can do the forward version on autopilot:
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="keyword"&gt;for&lt;/span&gt;(&lt;span class="type"&gt;size_t&lt;/span&gt; i = &lt;span class="literal"&gt;0&lt;/span&gt;; i &amp;lt; count; i++){
+  &lt;span class="keyword"&gt;if&lt;/span&gt;(haystack[i] == needle){
+    *where = i;
+    &lt;span class="keyword"&gt;return&lt;/span&gt; &lt;span class="literal"&gt;1&lt;/span&gt;;
+  }
+}
+&lt;span class="keyword"&gt;return&lt;/span&gt; &lt;span class="literal"&gt;0&lt;/span&gt;;
+&lt;/pre&gt;
+&lt;p&gt;
+So they try to do the same thing, just iterating backwards:
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="keyword"&gt;for&lt;/span&gt;(&lt;span class="type"&gt;size_t&lt;/span&gt; i = count - &lt;span class="literal"&gt;1&lt;/span&gt;; i &amp;gt;= &lt;span class="literal"&gt;0&lt;/span&gt;; i--){
+  &lt;span class="comment"&gt;// find needle&lt;/span&gt;
+}
+&lt;/pre&gt;
+&lt;p&gt;
+But that doesn't work at all! &lt;tt&gt;i &amp;gt;=0&lt;/tt&gt; is tautologically true
+(modern compilers will warn). Even worse, if count is 0, &lt;tt&gt;i&lt;/tt&gt; immediately becomes
+&lt;tt&gt;SIZE_MAX&lt;/tt&gt;.
+&lt;/p&gt;
+&lt;p&gt;
+Ok, so they try the next version:
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="keyword"&gt;for&lt;/span&gt;(&lt;span class="type"&gt;ssize_t&lt;/span&gt; i = count - &lt;span class="literal"&gt;1&lt;/span&gt;; i &amp;gt;= &lt;span class="literal"&gt;0&lt;/span&gt;; i--){
+  &lt;span class="comment"&gt;// find needle&lt;/span&gt;
+}
+&lt;/pre&gt;
+&lt;p&gt;
+This works in practice with a signed index but introduces
+some problems:
+&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+Now your index variable is signed, which can cause problems when used in expressions due to
+ C's conversion rules.
+&lt;/li&gt;
+&lt;li&gt;
+&lt;tt&gt;ssize_t&lt;/tt&gt; is a POSIX thing so you'd have to define it yourself on windows.
+&lt;/li&gt;
+&lt;li&gt;
+If your type is 32 bit, you run into promotion problems and might even run into truncation problems.
+&lt;/li&gt;
+&lt;li&gt;
+This spelling of the loop is overcomplicated and requires special inspection
+ each time. Did you get the second-clause condition right?
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;
+Avoiding these problems brings us to the actual, proper way to iterate backwards in C:
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="keyword"&gt;for&lt;/span&gt;(&lt;span class="type"&gt;size_t&lt;/span&gt; i = count; i--; ){
+  &lt;span class="comment"&gt;// find needle&lt;/span&gt;
+}
+&lt;/pre&gt;
+&lt;p&gt;
+So much simpler! Let's break it down:
+The key is the postdecrement operator on &lt;tt&gt;i&lt;/tt&gt;.
+It decrements &lt;tt&gt;i&lt;/tt&gt; but yields the value that &lt;tt&gt;i&lt;/tt&gt; was before the operation.
+In this case, this means that in the body of the loop &lt;tt&gt;i&lt;/tt&gt; is always in bounds
+as its value will be decremented after initialization so it is at most &lt;tt&gt;count - 1&lt;/tt&gt;,
+while the condition checks that if it was previously 0 then the loop ends. &lt;tt&gt;i&lt;/tt&gt; will
+wrap around, but unsigned wrap-around is well defined in C so that is not a problem.
+&lt;/p&gt;
+&lt;p&gt;
+The final version:
+&lt;/p&gt;
+&lt;pre&gt;
+&lt;span class="type"&gt;_Bool&lt;/span&gt; find_last(&lt;span class="type"&gt;size_t&lt;/span&gt; count, &lt;span class="type"&gt;int&lt;/span&gt; *haystack,
+                &lt;span class="type"&gt;int&lt;/span&gt; needle, &lt;span class="type"&gt;size_t&lt;/span&gt; *where){
+  &lt;span class="keyword"&gt;for&lt;/span&gt;(&lt;span class="type"&gt;size_t&lt;/span&gt; i = count; i--; ){
+    &lt;span class="keyword"&gt;if&lt;/span&gt;(haystack[i] == needle){
+      *where = i;
+      &lt;span class="keyword"&gt;return&lt;/span&gt; &lt;span class="literal"&gt;1&lt;/span&gt;;
+    }
+  }
+  &lt;span class="keyword"&gt;return&lt;/span&gt; &lt;span class="literal"&gt;0&lt;/span&gt;;
+}
+&lt;/pre&gt;
+&lt;p&gt;
+Doing it this way means you don't have to mess around with converting to a signed
+loop index and look at how simple that loop is! You can tell at a glance
+if someone has implemented the reverse loop properly or not.
+&lt;/p&gt;
+&lt;p&gt;
+So please! If you see someone trying to iterate backwards, show them this way
+to do it!
+&lt;/p&gt;
+&lt;/article&gt;
+&lt;div&gt;
+&lt;h2 id="copyright"&gt;Copyright&lt;/h2&gt;
+&lt;p&gt;
+All code in this article is released into the public domain.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</description><pubDate>Sun, 25 Oct 2026 05:11:59 GMT</pubDate><link>https://www.davidpriver.com/Iterating-backwards-in-C.html</link><guid isPermaLink="true">https://www.davidpriver.com/Iterating-backwards-in-C.html</guid><author>david@davidpriver.com</author></item></channel>
 </rss>

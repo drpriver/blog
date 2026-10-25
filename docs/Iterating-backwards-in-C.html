@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>Iterating Backwards in C</title>
+<style>
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  max-width: 68ch;
+  margin: auto;
+  margin-bottom: 40em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  padding: 12px;
+  background-color: #fff;
+  color: #000;
+}
+a {
+  color: rgb(0, 0, 238);
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #333;
+    color: #fff;
+  }
+  a:visited {
+    color: #88f;
+  }
+  a {
+    color: #88f;
+  }
+}
+dt {
+  font-weight: bold;
+}
+pre {
+  padding-left: 2em;
+  padding-right: 1em;
+  padding-top: 1ex;
+  padding-bottom: 1ex;
+  background-color: #fdf6e3;
+  border-radius: 16px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  overflow-x: auto;
+  line-height: 125%;
+}
+tt {
+  background-color: #eee;
+  padding: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  pre {
+    background-color: #222;
+  }
+  tt {
+    background-color: #222;
+  }
+}
+pre .enum {
+  font-weight: bold;
+}
+pre .keyword {
+  color: #049407;
+}
+@media (prefers-color-scheme: dark) {
+  pre .keyword {
+    color: #24c427;
+  }
+}
+pre .comment {
+  color: #000;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  pre .comment {
+    color: #fff;
+  }
+}
+pre .literal {
+  color: #2aa198;
+}
+pre .type {
+  color: #de6e00;
+}
+pre .macro {
+  color: #66a;
+}
+pre .func, pre .function {
+  color: #213dde;
+}
+@media (prefers-color-scheme: dark) {
+  pre .func, pre .function {
+    color: #519dde;
+  }
+}
+pre .string {
+  color: #2aa198;
+}
+pre .preproc {
+  color: #777;
+}
+.quoted {
+  margin-left: 2em;
+  border-left: 2px solid grey;
+  padding-left: 8px;
+}
+pre .h {
+  font-weight: bold;
+}
+pre .param {
+  color: #6a6;
+}
+</style>
+</head>
+<body>
+<p>
+<a href="https://www.davidpriver.com">Home</a>
+</p>
+<h1 id="iterating-backwards-in-c">Iterating Backwards in C</h1>
+<p>
+<i><a href="mailto:david@davidpriver.com">David Priver</a>, October 24th, 2026</i>
+</p>
+<article>
+
+<p>
+This is shorter than some of my other posts, but I keep seeing people
+doing this wrong. It's even worse now in the LLM era.
+</p>
+<p>
+Let's say you have a buffer and a counter and you need to iterate it
+backwards for some reason:
+</p>
+<pre>
+<span class="type">_Bool</span> find_last(<span class="type">size_t</span> count, <span class="type">int</span> *haystack,
+                <span class="type">int</span> needle, <span class="type">size_t</span> *where);
+</pre>
+<p>
+Almost everyone can do the forward version on autopilot:
+</p>
+<pre>
+<span class="keyword">for</span>(<span class="type">size_t</span> i = <span class="literal">0</span>; i &lt; count; i++){
+  <span class="keyword">if</span>(haystack[i] == needle){
+    *where = i;
+    <span class="keyword">return</span> <span class="literal">1</span>;
+  }
+}
+<span class="keyword">return</span> <span class="literal">0</span>;
+</pre>
+<p>
+So they try to do the same thing, just iterating backwards:
+</p>
+<pre>
+<span class="keyword">for</span>(<span class="type">size_t</span> i = count - <span class="literal">1</span>; i &gt;= <span class="literal">0</span>; i--){
+  <span class="comment">// find needle</span>
+}
+</pre>
+<p>
+But that doesn't work at all! <tt>i &gt;=0</tt> is tautologically true
+(modern compilers will warn). Even worse, if count is 0, <tt>i</tt> immediately becomes
+<tt>SIZE_MAX</tt>.
+</p>
+<p>
+Ok, so they try the next version:
+</p>
+<pre>
+<span class="keyword">for</span>(<span class="type">ssize_t</span> i = count - <span class="literal">1</span>; i &gt;= <span class="literal">0</span>; i--){
+  <span class="comment">// find needle</span>
+}
+</pre>
+<p>
+This works in practice with a signed index but introduces
+some problems:
+</p>
+<ul>
+<li>
+Now your index variable is signed, which can cause problems when used in expressions due to
+ C's conversion rules.
+</li>
+<li>
+<tt>ssize_t</tt> is a POSIX thing so you'd have to define it yourself on windows.
+</li>
+<li>
+If your type is 32 bit, you run into promotion problems and might even run into truncation problems.
+</li>
+<li>
+This spelling of the loop is overcomplicated and requires special inspection
+ each time. Did you get the second-clause condition right?
+</li>
+</ul>
+<p>
+Avoiding these problems brings us to the actual, proper way to iterate backwards in C:
+</p>
+<pre>
+<span class="keyword">for</span>(<span class="type">size_t</span> i = count; i--; ){
+  <span class="comment">// find needle</span>
+}
+</pre>
+<p>
+So much simpler! Let's break it down:
+The key is the postdecrement operator on <tt>i</tt>.
+It decrements <tt>i</tt> but yields the value that <tt>i</tt> was before the operation.
+In this case, this means that in the body of the loop <tt>i</tt> is always in bounds
+as its value will be decremented after initialization so it is at most <tt>count - 1</tt>,
+while the condition checks that if it was previously 0 then the loop ends. <tt>i</tt> will
+wrap around, but unsigned wrap-around is well defined in C so that is not a problem.
+</p>
+<p>
+The final version:
+</p>
+<pre>
+<span class="type">_Bool</span> find_last(<span class="type">size_t</span> count, <span class="type">int</span> *haystack,
+                <span class="type">int</span> needle, <span class="type">size_t</span> *where){
+  <span class="keyword">for</span>(<span class="type">size_t</span> i = count; i--; ){
+    <span class="keyword">if</span>(haystack[i] == needle){
+      *where = i;
+      <span class="keyword">return</span> <span class="literal">1</span>;
+    }
+  }
+  <span class="keyword">return</span> <span class="literal">0</span>;
+}
+</pre>
+<p>
+Doing it this way means you don't have to mess around with converting to a signed
+loop index and look at how simple that loop is! You can tell at a glance
+if someone has implemented the reverse loop properly or not.
+</p>
+<p>
+So please! If you see someone trying to iterate backwards, show them this way
+to do it!
+</p>
+</article>
+<div>
+<h2 id="copyright">Copyright</h2>
+<p>
+All code in this article is released into the public domain.
+</p>
+</div>
+</body>
+</html>

@@ -40,3 +40,5 @@ include Understanding-VLAs-in-C/Understanding-VLAs-in-C.mak
 include cpp-mutable-state/cpp-mutable-state.mak
 
 include undefined-behavior/undefined-behavior.mak
+
+include Iterating-backwards-in-C/Iterating-backwards-in-C.mak
